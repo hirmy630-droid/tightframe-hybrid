@@ -1,836 +1,1755 @@
 <!DOCTYPE html>
-<html lang="ja" class="dark">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- iPad専用ビューポート設定（ダブルタップズーム防止・セーフエリア対応） -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>屋根タイトフレーム割付計算</title>
-    <!-- PWA マニフェストとアイコン -->
-    <link rel="manifest" href="./manifest.json?v=202610010600">
-    <link rel="icon" type="image/png" href="./icon-192.png">
-    <link rel="apple-touch-icon" href="./icon-180.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>タイトフレーム割付 - KYOWA ROOF</title>
 
-    <!-- iOS / iPadOS PWA最適化メタタグ -->
+    <!-- PWA設定 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="屋根タイト割付">
-    <meta name="theme-color" content="#121214">
+    <meta name="apple-mobile-web-app-title" content="タイト">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontSize: {
-                        xs: ['16px', '1.4'],
-                        sm: ['16px', '1.4'],
-                        base: ['16px', '1.5'],
-                        lg: ['18px', '1.5'],
-                        xl: ['20px', '1.4'],
-                        '2xl': ['24px', '1.3'],
-                        '3xl': ['30px', '1.2'],
-                        '4xl': ['36px', '1.1']
-                    },
-                    colors: {
-                        ipad: {
-                            bg: '#111113',
-                            card: '#1c1c1e',
-                            subCard: '#252528',
-                            surface: '#2c2c2e',
-                            border: '#38383a',
-                            borderLight: '#48484a',
-                            accent: '#0a84ff',
-                            orange: '#f97316',
-                            green: '#30d158',
-                            purple: '#bf5af2',
-                            red: '#ff453a'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone@7.28.5/babel.min.js"></script>
-
+    <script src="https://cdn.tailwindcss.com/3.4.1"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+JP:wght@500;700;900&display=swap');
-
         :root {
-            --ipad-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-            --ipad-mono: "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+            --ios-bg: #000000;
+            --ios-card: #1c1c1e;
+            --ios-border: #333333;
+            --ios-orange: #ff9f0a;
+            --ios-blue: #0a84ff;
+            --ios-green: #30d158;
+            --ios-silver: #c7c7cc;
+            --ios-silver-dark: #9a9a9e;
+            --label-gray: #b0b0b5;
+            --unfocused-border: #444446;
+            --ipad-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+            --ipad-mono: "SF Mono", Menlo, Monaco, Consolas, monospace;
         }
 
         * {
             box-sizing: border-box;
-            touch-action: manipulation; /* ダブルタップズームのディレイを完全排除 */
+            -webkit-text-size-adjust: 100%;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
-        html, body {
-            height: 100%;
-            height: 100dvh;
-            overflow: hidden;
-            background-color: #111113;
-            color: #f5f5f7;
-            font-family: var(--ipad-font);
-            letter-spacing: -0.015em;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+        body {
+            margin: 0;
+            background: var(--ios-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* =========================================================
+           iPhone（768px未満）標準スタイル
+           ========================================================= */
+        .ipad-shell {
+            display: none;
+        }
+
+        .mobile-shell {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+        }
+
+        .header-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--ios-border);
+            background: var(--ios-bg);
+        }
+
+        .tab-wrapper {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(15px);
+            padding: 8px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .tab-container {
+            display: flex;
+            background: #2c2c2e;
+            width: 92%;
+            max-width: 420px;
+            padding: 2px;
+            border-radius: 10px;
+            border: 1px solid #3a3a3c;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 5px 0;
+            background: transparent;
+            color: var(--ios-silver-dark);
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1.5px solid transparent;
             user-select: none;
             -webkit-user-select: none;
         }
 
-        /* セーフエリア対応（iPadのインジケーター・ホームバー、左側見切れ対応） */
-        body {
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: max(16px, env(safe-area-inset-left));
-            padding-right: max(16px, env(safe-area-inset-right));
+        .tab-button.active {
+            background: #636366;
+            color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
-        /* iPadOS カードスタイル */
-        .ipad-card {
-            background: #1c1c1e;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .main-container {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .result-stack { padding: 10px 12px; }
+        .result-box {
+            height: 60px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1.5px solid var(--ios-border);
             border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            margin-bottom: 8px;
+            position: relative;
+            cursor: pointer;
         }
 
-        /* iPad テンキー専用タッチキースタイル（横幅9分割に最適化したフォント・パディング） */
-        .ipad-key {
+        .result-box-blue { background: rgba(10, 132, 255, 0.15); border-color: var(--ios-blue); }
+        .result-box-green { background: rgba(48, 209, 88, 0.15); border-color: var(--ios-green); }
+
+        .result-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #ffffff;
+            display: flex;
+            align-items: baseline;
+            gap: 1px;
+        }
+
+        .result-label-left {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .count-badge {
+            font-size: 15px;
+            font-weight: 700;
+            padding: 1px 8px;
+            border-radius: 12px;
+            margin-left: 8px;
+            display: inline-flex;
+            align-items: baseline;
+            gap: 1px;
+        }
+        .count-badge-blue { background: rgba(10, 132, 255, 0.25); color: var(--ios-blue); border: 1px solid rgba(10, 132, 255, 0.3); }
+        .count-badge-green { background: rgba(48, 209, 88, 0.25); color: var(--ios-green); border: 1px solid rgba(48, 209, 88, 0.3); }
+
+        .unit-text { font-size: 16px; font-weight: 600; opacity: 0.6; }
+        .separator-slash { font-size: 18px; font-weight: 600; opacity: 0.2; margin: 0 4px; }
+        .yane-area { font-size: 15px; font-weight: 500; opacity: 0.7; display: flex; align-items: baseline; }
+
+        .cell-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            background: var(--ios-border);
+            gap: 1px;
+            margin: 0 12px 0;
+            border-radius: 16px 16px 0 0;
+            overflow: hidden;
+            border: 1px solid var(--ios-border);
+            border-bottom: none;
+        }
+
+        .calc-cell {
+            background: #121214;
+            height: 54px;
+            padding: 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            grid-column: span 3;
+            border: 0.5px solid var(--unfocused-border);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .calc-cell-lg { height: 56px; }
+        .span-6 { grid-column: span 6 !important; }
+        .calc-cell.focused { background: #1c1c1e; box-shadow: inset 0 0 0 1.5px var(--ios-orange) !important; border-color: var(--ios-orange); z-index: 10; }
+
+        .type-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 5; }
+        .input-value { font-size: 26px; font-weight: 600; color: #ffffff; flex: 1; text-align: right; }
+        .input-label-left { font-size: 14px; font-weight: 600; color: var(--label-gray); margin-right: 4px; white-space: nowrap; }
+
+        .keypad-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+            background: var(--ios-border);
+            margin: 0 12px 12px;
+            border-radius: 0 0 16px 16px;
+            overflow: hidden;
+            border: 1px solid var(--ios-border);
+        }
+
+        .key-btn {
+            background: #1c1c1e;
+            color: white;
+            height: 64px;
+            font-size: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: var(--ipad-mono);
-            font-size: 22px;
-            font-weight: 700;
-            height: 52px;
-            background: #252528;
-            color: #f5f5f7;
+            margin: 0;
+            border: 0;
+            border-radius: 0;
+            background-image: linear-gradient(to bottom, rgba(255,255,255,0.07), rgba(0,0,0,0.10));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), inset 1px 0 0 rgba(255,255,255,0.06), inset 0 -2px 2px rgba(0,0,0,0.35), inset -1px 0 0 rgba(0,0,0,0.22);
+            transition: background-color 0.1s, box-shadow 0.1s;
+            position: relative;
+            user-select: none;
+            -webkit-user-select: none;
             cursor: pointer;
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            transition: background 0.08s ease, transform 0.08s ease;
         }
+        .key-btn:active { background-color: #333; box-shadow: inset 0 2px 4px rgba(0,0,0,0.45), inset 0 -1px 0 rgba(255,255,255,0.06); }
+        .key-btn.orange { background-color: var(--ios-orange); font-weight: 600; }
+        .key-btn.gray { background-color: #2c2c2e; color: var(--label-gray); font-size: 18px; font-weight: 600; }
 
-        .ipad-key:active {
-            background: #3a3a3e !important;
-            transform: scale(0.985);
-        }
+        .table-area { padding: 10px 12px; }
+        .table-card { background: var(--ios-card); border-radius: 16px; overflow: hidden; border: 1px solid var(--ios-border); }
+        .table-cell { padding: 6px 4px; border-bottom: 1px solid var(--ios-border); font-size: 18px; font-weight: 700; text-align: center; }
+        .table-foot-row { background: #2c2c2e; border-top: 2px solid #444; }
 
-        .ipad-key-fn {
-            background: #2c2c30;
-            color: #f97316;
-            font-size: 17px;
-            font-weight: 800;
+        #resTaniZan, #resYamaZan { font-size: 24px; }
+        .keraba-divider-top > td { border-top: 2px solid #b8b8bd; }
+        .keraba-divider-bottom > td { border-bottom: 2px solid #b8b8bd; }
+        .layout-share-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            padding: 0;
+            border: 1px solid #444446;
+            border-radius: 10px;
+            background: #2c2c2e;
+            color: #0a84ff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
         }
+        .layout-share-button:disabled { opacity: 0.5; }
 
-        /* スムーズスクロール */
-        .ipad-scroll {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+        #toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(59, 130, 246, 0.95);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: bold;
+            opacity: 0;
+            z-index: 10000;
+            transition: 0.3s;
+            pointer-events: none;
         }
+        #toast.show { opacity: 1; }
+        .hidden { display: none !important; }
 
-        .ipad-scroll::-webkit-scrollbar {
-            width: 6px;
+        #installBtn {
+            position: fixed;
+            right: 16px;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            z-index: 9999;
+            border: none;
+            border-radius: 14px;
+            background: #2563eb;
+            color: #fff;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 10px 24px rgba(0,0,0,.35);
+            display: none;
         }
-        .ipad-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .ipad-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 9999px;
-        }
+        #installBtn:active { transform: scale(.98); }
 
-        /* 通常画面の文字は最低16px（断面図のSVGは個別指定） */
-        [class*="text-[10px]"],
-        [class*="text-[11px]"],
-        [class*="text-[12px]"],
-        [class*="text-[13px]"],
-        [class*="text-[14px]"],
-        [class*="text-[15px]"] {
-            font-size: 16px !important;
-            line-height: 1.4 !important;
+        /* =========================================================
+           iPad（768px以上）2カラム同時表示＋断面図スタイル
+           ========================================================= */
+        @media (min-width: 768px) {
+            html, body {
+                height: 100%;
+                height: 100dvh;
+                overflow: hidden;
+                background-color: #111113;
+                color: #f5f5f7;
+                font-family: var(--ipad-font);
+                letter-spacing: -0.015em;
+                -webkit-font-smoothing: antialiased;
+                user-select: none;
+                -webkit-user-select: none;
+                padding-left: max(16px, env(safe-area-inset-left));
+                padding-right: max(16px, env(safe-area-inset-right));
+                align-items: stretch;
+            }
+
+            .mobile-shell {
+                display: none !important;
+            }
+
+            .ipad-shell {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                height: 100%;
+                overflow: hidden;
+            }
+
+            .ipad-card {
+                background: #1c1c1e;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 16px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            }
+
+            .ipad-key {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: var(--ipad-mono);
+                font-size: 22px;
+                font-weight: 700;
+                height: 52px;
+                background: #252528;
+                color: #f5f5f7;
+                cursor: pointer;
+                border: none;
+                border-right: 1px solid rgba(255, 255, 255, 0.08);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                box-shadow: inset 0 1px 0 rgba(255,255,255,.09), inset 0 -2px 2px rgba(0,0,0,.25);
+                transition: background 0.08s ease, transform 0.08s ease;
+            }
+            .ipad-key:active {
+                background: #3a3a3e !important;
+                transform: scale(0.985);
+            }
+            .ipad-key-fn {
+                background: #2c2c30;
+                color: #f97316;
+                font-size: 17px;
+                font-weight: 800;
+            }
+
+            .ipad-scroll {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .ipad-scroll::-webkit-scrollbar {
+                width: 6px;
+            }
+            .ipad-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .ipad-scroll::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 9999px;
+            }
+
+            .keraba-inline {
+                min-height: 32px;
+                padding: 2px 10px;
+                border: 1px solid #48484a;
+                border-radius: 7px;
+                background: #2c2c2e;
+                color: #a1a1aa;
+                font-size: 15px;
+                cursor: pointer;
+            }
+            .keraba-inline[aria-pressed="true"] {
+                color: #ff9f0a;
+                border-color: rgba(255, 159, 10, 0.5);
+            }
+
+            .parameter-box {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 2px 6px;
+                min-width: 0;
+                min-height: 42px;
+                padding: 6px 10px;
+                border: 1px solid #38383a;
+                border-radius: 10px;
+                background: #111113;
+            }
+            .parameter-select {
+                flex: 1;
+                min-width: 72px;
+                width: 0;
+                color: #fff;
+                background: transparent;
+                padding: 2px 0;
+                font-size: 16px;
+                font-weight: 600;
+                outline: none;
+            }
+            .parameter-value {
+                flex: 1;
+                text-align: right;
+                white-space: nowrap;
+                font-size: 16px;
+            }
+
+            .ipad-main {
+                flex: 1;
+                padding: 12px 16px 16px;
+                overflow: hidden;
+                min-height: 0;
+            }
+            .left-column {
+                display: grid;
+                grid-template-rows: auto minmax(0, 1fr) auto;
+                gap: clamp(6px, 1.1dvh, 12px);
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+            .input-card {
+                padding: clamp(8px, 1.3dvh, 12px);
+            }
+            .profile-card {
+                min-height: 0;
+                padding: 6px;
+                overflow: hidden;
+            }
+            .profile-card > svg {
+                min-height: 0;
+                max-height: 100%;
+                flex-shrink: 1;
+            }
+            .summary-cards {
+                gap: 8px;
+            }
+            .summary-cards > .ipad-card {
+                padding: clamp(8px, 1.1dvh, 12px);
+            }
+
+            .right-header {
+                padding: 12px;
+                background: #252528;
+                border-bottom: 1px solid #38383a;
+            }
+            .right-tabs {
+                display: flex;
+                gap: 0;
+                border: 1px solid #48484a;
+                border-radius: 10px;
+                overflow: hidden;
+                margin-bottom: 10px;
+            }
+            .right-tabs button {
+                flex: 1;
+                min-height: 40px;
+                font-size: 16px;
+                font-weight: 700;
+                color: #a1a1aa;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+            }
+            .right-tabs button.selected {
+                background: #3a3a3e;
+                color: #ff9f0a;
+            }
+            .length-share-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 6px;
+                font-size: 16px;
+            }
+            .header-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+            .mode-button {
+                background: #ff9f0a;
+                color: #000;
+                padding: 4px 10px;
+                border-radius: 6px;
+                font-weight: 700;
+                font-size: 16px;
+                border: none;
+                cursor: pointer;
+            }
+            .share-icon {
+                width: 40px;
+                height: 40px;
+                display: inline-flex;
+                justify-content: center;
+                align-items: center;
+                border: 1px solid #48484a;
+                border-radius: 10px;
+                color: #0a84ff;
+                background: #2c2c2e;
+                cursor: pointer;
+            }
+            .share-icon:disabled { opacity: .5; }
+            .side-select {
+                max-width: 100%;
+                background: #2c2c2e;
+                border: 1px solid #48484a;
+                border-radius: 7px;
+                padding: 6px;
+                color: #fff;
+                font-size: 16px;
+            }
+            .layout-cell {
+                padding: 12px 4px;
+                border-bottom: 1px solid #333;
+                border-right: 1px solid #333;
+                font-size: 20px;
+                font-weight: 700;
+            }
         }
-            .ipad-key { box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -2px 2px rgba(0,0,0,.25); }
-        .keraba-inline { min-height:32px; padding:2px 8px; border:1px solid #48484a; border-radius:7px; background:#2c2c2e; color:#a1a1aa; }
-        .keraba-inline[aria-pressed="true"] { color:#ff9f0a; }
-        .parameter-box { display:flex; align-items:center; flex-wrap:wrap; gap:2px 6px; min-width:0; min-height:40px; padding:6px 8px; border:1px solid #38383a; border-radius:10px; background:#111113; }
-        .parameter-select { flex:1; min-width:72px; width:0; color:#fff; background:transparent; padding:2px 0; }
-        .parameter-value { flex:1; text-align:right; white-space:nowrap; }
-        main { min-height:0; }
-        @media (min-width:768px) {
-            .left-column.left-column { display:grid; grid-template-rows:auto minmax(0,1fr) auto; gap:clamp(6px,1.1dvh,12px); height:100%; min-height:0; overflow:hidden; padding-right:0; }
-            .input-card.input-card { padding:clamp(8px,1.3dvh,12px); }
-            .input-card > :not([hidden]) ~ :not([hidden]) { margin-top:clamp(4px,.8dvh,8px); }
-            .profile-card.profile-card { min-height:0; padding:6px; overflow:hidden; }
-            .profile-card > svg { min-height:0; max-height:100%; flex-shrink:1; }
-            .summary-cards.summary-cards { gap:8px; }
-            .summary-cards > .ipad-card { padding:clamp(8px,1.1dvh,12px); }
-            .summary-cards .mb-1 { margin-bottom:2px; }
-        }
-        .right-header { padding:12px; background:#252528; border-bottom:1px solid #38383a; }
-        .right-tabs { display:flex; gap:0; border:1px solid #48484a; border-radius:10px; overflow:hidden; margin-bottom:10px; }
-        .right-tabs button { flex:1; min-height:40px; font-weight:700; color:#a1a1aa; }
-        .right-tabs button.selected { background:#3a3a3e; color:#ff9f0a; }
-        .length-share-row { display:flex; align-items:center; justify-content:space-between; gap:6px; }
-        .header-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-        .mode-button { background:#ff9f0a; color:#000; padding:4px 8px; border-radius:6px; font-weight:700; font-size:16px; }
-        .share-icon { width:40px; height:40px; display:inline-flex; justify-content:center; align-items:center; border:1px solid #48484a; border-radius:10px; color:#0a84ff; background:#2c2c2e; }
-        .share-icon:disabled { opacity:.5; }
-        .side-select { max-width:100%; background:#2c2c2e; border:1px solid #48484a; border-radius:7px; padding:6px; color:#fff; font-size:16px; }
-        .layout-cell { padding:12px 4px; border-bottom:1px solid #333; border-right:1px solid #333; font-size:20px; font-weight:700; }
-        .keraba-divider-top > td { border-top:2px solid #b8b8bd; }
-        .keraba-divider-bottom > td { border-bottom:2px solid #b8b8bd; }
-        @media (max-width:767px) { main { overflow-y:auto!important; } }
     </style>
 </head>
-<body class="flex flex-col h-screen select-none">
-    <div id="root" class="flex flex-col flex-1 h-full overflow-hidden"></div>
+<body>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+    <div id="toast">コピーしました</div>
 
-        const unformat = (val) => val ? val.toString().replace(/,/g, '') : '';
-        const toNum = (val) => parseFloat(unformat(val)) || 0;
-        const format = (val) => {
-            if (val === '' || val === undefined || val === null) return '';
-            const clean = unformat(val);
-            const num = parseFloat(clean);
-            return isNaN(num) ? val : num.toLocaleString('ja-JP', { maximumFractionDigits: 3 });
-        };
-        const excelMod = (n, d) => d === 0 ? 0 : n - d * Math.floor(n / d);
+    <!-- =========================================================
+         iPhone用 1カラム・3タブUI（768px未満）
+         ========================================================= -->
+    <div class="mobile-shell">
+        <div class="main-container">
+            <!-- ヘッダー -->
+            <div class="header-bar">
+                <span style="font-size: 14px; font-weight: 600;">タイトフレーム割付</span>
+                <span style="font-size: 12px; opacity: 0.8; font-weight: 500;">KYOWA ROOF</span>
+            </div>
 
-        const RoofProfileSVG = ({ size }) => {
-            if (size === '600') {
-                return (
-                    <svg viewBox="0 0 800 370" className="w-full h-auto max-h-[240px] text-white select-none font-mono">
-                        <defs>
-                            {/* 寸法線端部用矢印マーカー */}
-                            <marker id="arrow-start-600" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                                <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#e4e4e7" />
-                            </marker>
-                            <marker id="arrow-end-600" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                                <path d="M 2 1.5 L 10 5 L 2 8.5 z" fill="#e4e4e7" />
-                            </marker>
-                        </defs>
+            <!-- タブメニュー -->
+            <div class="tab-wrapper">
+                <div class="tab-container">
+                    <button id="tab-calc" class="tab-button active" onclick="switchTab('calc')">数値入力</button>
+                    <button id="tab-table" class="tab-button" onclick="switchTab('table')">割付表</button>
+                    <button id="tab-edge" class="tab-button" onclick="switchTab('edge')">片張り</button>
+                </div>
+            </div>
 
-                        {/* 芯線（一点鎖線）：4箇所の山芯 */}
-                        <g stroke="#71717a" strokeWidth="1.2" strokeDasharray="8,4,2,4">
-                            <line x1="100" y1="50" x2="100" y2="230" />
-                            <line x1="280" y1="50" x2="280" y2="230" />
-                            <line x1="460" y1="50" x2="460" y2="230" />
-                            <line x1="640" y1="50" x2="640" y2="230" />
-                        </g>
+            <!-- 数値入力画面 -->
+            <div id="view-calc">
+                <div class="result-stack">
+                    <div class="result-box result-box-blue" onclick="copyValue('resTaniZan')">
+                        <div class="flex items-center">
+                            <div class="result-label-left text-[#0a84ff]">谷芯</div>
+                            <div class="count-badge count-badge-blue"><span id="countTani">-</span>本</div>
+                        </div>
+                        <div class="result-value">
+                            <span id="resTaniZan">-</span>
+                            <span class="separator-slash">/</span>
+                            <div class="yane-area">
+                                <span>屋根割付 </span><span id="resYaneTani" class="font-bold ml-1">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="result-box result-box-green" onclick="copyValue('resYamaZan')">
+                        <div class="flex items-center">
+                            <div class="result-label-left text-[#30d158]">山芯</div>
+                            <div class="count-badge count-badge-green"><span id="countYama">-</span>本</div>
+                        </div>
+                        <div class="result-value">
+                            <span id="resYamaZan">-</span>
+                            <span class="separator-slash">/</span>
+                            <div class="yane-area">
+                                <span>屋根割付 </span><span id="resYaneYama" class="font-bold ml-1">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                        {/* 最上段寸法線: 600 */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="100" y1="20" x2="100" y2="40" />
-                            <line x1="640" y1="20" x2="640" y2="40" />
-                            <line x1="100" y1="30" x2="640" y2="30" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                        </g>
-                        <rect x="345" y="16" width="50" height="24" rx="4" fill="#1c1c1e" />
-                        <text x="370" y="34" fill="#f4f4f5" fontSize="20" fontWeight="bold" textAnchor="middle">600</text>
+                <div class="cell-grid">
+                    <div class="calc-cell" id="type-cell">
+                        <span class="input-label-left">タイプ</span>
+                        <div id="display-size" class="input-value">600</div>
+                        <select id="sizeSelect" class="type-select" onchange="handleSelectChange(this.value)">
+                            <option value="600">600タイプ</option>
+                            <option value="500">500タイプ</option>
+                            <option value="1000">1000タイプ</option>
+                        </select>
+                        <span class="text-[10px] text-zinc-600 ml-1">▼</span>
+                    </div>
+                    <div class="calc-cell" style="background: #0a0a0b;">
+                        <span class="input-label-left">全長芯</span>
+                        <div id="display-centerL" class="input-value" style="color:#ff9f0a">0</div>
+                    </div>
+                    <div class="calc-cell span-6 calc-cell-lg focused" onclick="focusInput('totalLength')">
+                        <span class="input-label-left">全長 (L)</span>
+                        <div id="display-totalLength" class="input-value">0</div>
+                    </div>
+                </div>
 
-                        {/* 2段目 ピッチ寸法線: 200, 200, 200 */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="100" y1="58" x2="100" y2="76" />
-                            <line x1="280" y1="58" x2="280" y2="76" />
-                            <line x1="460" y1="58" x2="460" y2="76" />
-                            <line x1="640" y1="58" x2="640" y2="76" />
-                            <line x1="100" y1="67" x2="280" y2="67" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                            <line x1="280" y1="67" x2="460" y2="67" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                            <line x1="460" y1="67" x2="640" y2="67" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                        </g>
-                        <rect x="165" y="55" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="190" y="72" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">200</text>
-                        <rect x="345" y="55" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="370" y="72" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">200</text>
-                        <rect x="525" y="55" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="550" y="72" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">200</text>
+                <div class="keypad-container">
+                    <button class="key-btn" onclick="pressKey('7')">7</button>
+                    <button class="key-btn" onclick="pressKey('8')">8</button>
+                    <button class="key-btn" onclick="pressKey('9')">9</button>
+                    <button id="key-keraba" class="key-btn gray" onclick="toggleTableKeraba()" aria-pressed="false" style="font-size:14px;white-space:nowrap"><span id="key-keraba-state">ケラバOFF</span></button>
+                    <button class="key-btn" onclick="pressKey('4')">4</button>
+                    <button class="key-btn" onclick="pressKey('5')">5</button>
+                    <button class="key-btn" onclick="pressKey('6')">6</button>
+                    <button class="key-btn gray" onclick="pressKey('clear')">C</button>
+                    <button class="key-btn" onclick="pressKey('1')">1</button>
+                    <button class="key-btn" onclick="pressKey('2')">2</button>
+                    <button class="key-btn" onclick="pressKey('3')">3</button>
+                    <button class="key-btn orange" id="enter-btn-label" onclick="switchTab('table')" style="font-size:18px">割付表</button>
+                    <button class="key-btn" onclick="pressKey('0')">0</button>
+                    <button class="key-btn" onclick="pressKey('00')">00</button>
+                    <button class="key-btn" onclick="pressKey('000')">000</button>
+                    <button class="key-btn orange" onclick="switchTab('edge')" style="font-size:18px">片張り</button>
+                </div>
+            </div>
 
-                        {/* 3段目 山頂幅寸法線: 33.5, 35, 35, 35 */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            {/* 山1 (33.5) */}
-                            <line x1="83.25" y1="95" x2="83.25" y2="175" />
-                            <line x1="116.75" y1="95" x2="116.75" y2="175" />
-                            <line x1="83.25" y1="125" x2="116.75" y2="125" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                            {/* 山2 (35) */}
-                            <line x1="262.5" y1="95" x2="262.5" y2="175" />
-                            <line x1="297.5" y1="95" x2="297.5" y2="175" />
-                            <line x1="262.5" y1="125" x2="297.5" y2="125" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                            {/* 山3 (35) */}
-                            <line x1="442.5" y1="95" x2="442.5" y2="175" />
-                            <line x1="477.5" y1="95" x2="477.5" y2="175" />
-                            <line x1="442.5" y1="125" x2="477.5" y2="125" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                            {/* 山4 (35) */}
-                            <line x1="622.5" y1="95" x2="622.5" y2="175" />
-                            <line x1="657.5" y1="95" x2="657.5" y2="175" />
-                            <line x1="622.5" y1="125" x2="657.5" y2="125" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                        </g>
-                        <text x="100" y="117" fill="#f4f4f5" fontSize="16" fontWeight="bold" textAnchor="middle">33.5</text>
-                        <text x="280" y="117" fill="#f4f4f5" fontSize="16" fontWeight="bold" textAnchor="middle">35</text>
-                        <text x="460" y="117" fill="#f4f4f5" fontSize="16" fontWeight="bold" textAnchor="middle">35</text>
-                        <text x="640" y="117" fill="#f4f4f5" fontSize="16" fontWeight="bold" textAnchor="middle">35</text>
+            <!-- 片張り画面 -->
+            <div id="view-edge" class="hidden">
+                <div class="table-area"><div class="table-card">
+                    <div class="bg-[#2c2c2e] p-3 border-b border-[#444]">
+                        <div class="flex justify-between items-center"><div class="font-bold text-base">全長: <span id="edge-L">-</span>㎜</div><button id="share-edge" type="button" class="layout-share-button" onclick="shareLayout('edge')" aria-label="共有" title="共有"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M7 10H5v11h14V10h-2"/></svg></button></div>
+                        <div class="font-bold text-[14px] mt-2 flex items-center justify-between gap-2 whitespace-nowrap"><span><span id="edge-size">-</span>タイプ</span><span class="ml-auto text-right">屋根材 <span id="edge-sheets" class="text-orange-400">-</span>枚</span></div>
+                        <div class="mt-2" style="display:flex;align-items:center;gap:8px"><select id="edge-side" onchange="setKerabaSide(this.value)" style="background:#2c2c2e;color:white;border:1px solid #444;border-radius:6px;padding:6px;font-size:14px;flex-shrink:0"><option value="left">ケラバ：片端1本</option><option value="both" selected>ケラバ：終始2本</option></select><div id="edge-shoulders" style="font-size:14px;margin-left:auto;text-align:right;white-space:nowrap" class="font-bold" title="全長の端から山の内側の肩まで（mm）">左-・右-</div></div>
+                    </div>
+                    <table class="w-full"><thead><tr class="bg-[#2c2c2e] text-[14px] font-semibold border-b border-[#444]"><th class="py-2 border-r border-[#444] w-12 text-zinc-500">本</th><th class="py-2 border-r border-[#444] text-[#0a84ff]">ケラバなし</th><th class="py-2 text-[#30d158]">ケラバあり</th></tr></thead><tbody id="edge-table"></tbody>
+                    <tfoot class="table-foot-row"><tr><td class="border-r border-[#444]"></td><td id="edge-total-none" class="py-3 px-1 text-center border-r border-[#444]"></td><td id="edge-total-with" class="py-3 px-1 text-center"></td></tr></tfoot></table>
+                </div><p id="edge-note" class="text-[14px] text-zinc-400 mt-2">左外端からの寸法(mm)。通常タイトは谷芯、ケラバは山芯。終のケラバは右外端からの寸法。屋根材の最初の山芯は30mm。</p></div>
+            </div>
 
-                        {/* 端部 20 斜め寸法 */}
-                        {/* 左端 20 */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            <line x1="83.25" y1="175" x2="67" y2="155" />
-                            <line x1="69.25" y1="195" x2="53" y2="175" />
-                            <line x1="64" y1="160" x2="56" y2="170" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                        </g>
-                        <text x="45" y="160" fill="#f4f4f5" fontSize="16" fontWeight="bold" textAnchor="end" transform="rotate(-50 45 160)">20</text>
-                        {/* 右端 20 */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            <line x1="657.5" y1="175" x2="673.75" y2="155" />
-                            <line x1="671.5" y1="195" x2="687.75" y2="175" />
-                            <line x1="677" y1="160" x2="685" y2="170" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                        </g>
-                        <text x="702" y="152" fill="#f4f4f5" fontSize="16" fontWeight="bold" textAnchor="start" transform="rotate(50 702 152)">20</text>
+            <!-- 割付表画面 -->
+            <div id="view-table" class="hidden">
+                <div class="table-area">
+                    <div class="table-card">
+                        <div class="bg-[#2c2c2e] p-3 border-b border-[#444]">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-base">全長: <span id="table-badge-L">-</span>㎜</span>
+                                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><button id="table-mode" type="button" onclick="toggleTableKeraba()" aria-pressed="false" class="text-sm bg-[#ff9f0a] px-2 py-0.5 rounded font-bold text-black shadow-sm">割付表</button><button id="share-table" type="button" class="layout-share-button" onclick="shareLayout('table')" aria-label="共有" title="共有"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M7 10H5v11h14V10h-2"/></svg></button></div>
+                            </div>
+                            <div class="font-bold text-[14px] mt-2 flex items-center justify-between gap-2 whitespace-nowrap"><span><span id="table-badge-size">-</span>タイプ</span><span id="roof-count-inline" class="ml-auto text-right">屋根材 -枚</span><span class="hidden"><span id="table-badge-Sheets">-</span></span></div>
 
-                        {/* 600 折板屋根 断面ライン */}
-                        <path d="M 69.25 195 L 83.25 175 L 116.75 175 L 172.5 263 L 207.5 263 L 262.5 175 L 297.5 175 L 352.5 263 L 387.5 263 L 442.5 175 L 477.5 175 L 532.5 263 L 567.5 263 L 622.5 175 L 657.5 175 L 671.5 195"
-                              fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                            <div id="table-shoulders" style="font-size:14px" class="text-[14px] font-bold mt-1 whitespace-nowrap overflow-x-auto" title="① 全長の端から山の内側の肩まで（mm）">谷芯 左-・右-、山芯 左-・右-</div>
+                            <div id="table-side-wrap" class="mt-2 hidden"><select id="table-side" onchange="setKerabaSide(this.value)" style="background:#2c2c2e;color:white;border:1px solid #444;border-radius:6px;padding:6px;font-size:14px"><option value="left">ケラバ：片端1本</option><option value="both" selected>ケラバ：終始2本</option></select></div>
+                        </div>
+                        <table class="w-full">
+                            <thead class="shadow-md">
+                                <tr class="bg-[#2c2c2e] text-[14px] text-zinc-400 font-semibold border-b border-[#444]">
+                                    <th class="py-2 border-r border-[#444] w-12 text-zinc-500">本</th>
+                                    <th class="py-2 border-r border-[#444] text-[#0a84ff] tracking-wider">谷芯(mm)</th>
+                                    <th class="py-2 text-[#30d158] tracking-wider">山芯(mm)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultTableBody"></tbody>
+                            <tfoot class="table-foot-row shadow-inner">
+                                <tr class="font-semibold border-t border-[#444]">
+                                    <td class="border-r border-[#444]"></td>
+                                    <td class="py-3 px-1 text-center border-r border-[#444]">
+                                        <div><span class="text-[11px] text-zinc-400">本数合計</span> <span class="text-[18px] text-white" id="foot-count-tani">-</span><span class="text-[12px] text-zinc-400">本</span></div><div id="foot-keraba-tani" class="hidden text-[12px] text-zinc-400"></div>
+                                        <div class="mt-1"><span class="text-[11px] text-zinc-400">端数合計</span> <span class="text-[18px] text-orange-400" id="foot-rem-tani">-</span><span class="text-[12px] text-zinc-400">㎜</span></div>
+                                    </td>
+                                    <td class="py-3 px-1 text-center">
+                                        <div><span class="text-[11px] text-zinc-400">本数合計</span> <span class="text-[18px] text-white" id="foot-count-yama">-</span><span class="text-[12px] text-zinc-400">本</span></div><div id="foot-keraba-yama" class="hidden text-[12px] text-zinc-400"></div>
+                                        <div class="mt-1"><span class="text-[11px] text-zinc-400">端数合計</span> <span class="text-[18px] text-orange-400" id="foot-rem-yama">-</span><span class="text-[12px] text-zinc-400">㎜</span></div>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <p id="table-note" class="hidden text-[14px] text-zinc-400 mt-2">左切断端からの寸法(mm)。終のケラバ山芯は右切断端からの寸法。ケラバ山芯・通常タイトは全長内。切断した通常タイトは切断端の位置。本数・端数合計は通常タイトのみ。</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                        {/* 高さ寸法 (88) 引き出し線と垂直寸法 */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="138" y1="175" x2="195" y2="175" />
-                            <line x1="195" y1="175" x2="195" y2="263" />
-                            <line x1="195" y1="263" x2="195" y2="263" />
-                        </g>
-                        <rect x="180" y="206" width="30" height="20" rx="3" fill="#1c1c1e" />
-                        <text x="195" y="222" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">88</text>
+    <!-- =========================================================
+         iPad用 2カラム同時表示＋断面図UI（768px以上）
+         ========================================================= -->
+    <div class="ipad-shell">
+        <header class="h-10 px-5 border-b border-white/10 bg-[#1c1c1e]/90 backdrop-blur-xl flex items-center justify-between shrink-0 z-40">
+            <div class="flex items-center gap-2.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-[#0a84ff] shadow-sm"></div>
+                <h1 class="text-base font-bold tracking-wide text-zinc-200 font-mono flex items-center gap-2">
+                    <span class="text-orange-400 font-black">KYOWA ROOF</span>
+                    <span class="text-zinc-600">/</span>
+                    <span>屋根タイト割付計算</span>
+                </h1>
+            </div>
+        </header>
 
-                        {/* 谷平部寸法線: 35, 35, 35 */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            {/* 谷1 */}
-                            <line x1="172.5" y1="263" x2="172.5" y2="330" />
-                            <line x1="207.5" y1="263" x2="207.5" y2="330" />
-                            <line x1="172.5" y1="315" x2="207.5" y2="315" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                            {/* 谷2 */}
-                            <line x1="352.5" y1="263" x2="352.5" y2="330" />
-                            <line x1="387.5" y1="263" x2="387.5" y2="330" />
-                            <line x1="352.5" y1="315" x2="387.5" y2="315" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                            {/* 谷3 */}
-                            <line x1="532.5" y1="263" x2="532.5" y2="330" />
-                            <line x1="567.5" y1="263" x2="567.5" y2="330" />
-                            <line x1="532.5" y1="315" x2="567.5" y2="315" markerStart="url(#arrow-start-600)" markerEnd="url(#arrow-end-600)" />
-                        </g>
-                        <text x="190" y="348" fill="#f4f4f5" fontSize="17" fontWeight="bold" textAnchor="middle">35</text>
-                        <text x="370" y="348" fill="#f4f4f5" fontSize="17" fontWeight="bold" textAnchor="middle">35</text>
-                        <text x="550" y="348" fill="#f4f4f5" fontSize="17" fontWeight="bold" textAnchor="middle">35</text>
-                    </svg>
-                );
-            } else if (size === '500') {
-                return (
-                    <svg viewBox="0 0 800 370" className="w-full h-auto max-h-[240px] text-white select-none font-mono">
-                        <defs>
-                            <marker id="arrow-start-500" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                                <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#e4e4e7" />
-                            </marker>
-                            <marker id="arrow-end-500" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                                <path d="M 2 1.5 L 10 5 L 2 8.5 z" fill="#e4e4e7" />
-                            </marker>
-                        </defs>
+        <main class="ipad-main">
+            <div class="h-full w-full max-w-[1400px] mx-auto grid grid-cols-12 gap-4">
+                <!-- 左カラム: 入力・テンキー・断面図・サマリーカード (5 / 12) -->
+                <div class="left-column col-span-5">
+                    <!-- 入力 & テンキー カード -->
+                    <div class="input-card ipad-card space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="parameter-box">
+                                <label for="ipad-type" class="text-base text-zinc-400 font-bold">タイプ</label>
+                                <select id="ipad-type" onchange="handleSelectChange(this.value)" class="parameter-select">
+                                    <option value="600">600 (折板)</option>
+                                    <option value="500">500 (H150)</option>
+                                    <option value="1000">1000 (大型)</option>
+                                </select>
+                            </div>
+                            <div class="parameter-box">
+                                <span class="text-base text-zinc-400 font-bold">芯寸法</span>
+                                <span id="ipad-centerL" class="parameter-value font-mono font-bold text-orange-400">-</span>
+                            </div>
+                        </div>
 
-                        {/* 垂直芯線（実線）: 3箇所の山芯から下部ピッチへ貫通 */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            <line x1="150" y1="75" x2="150" y2="340" />
-                            <line x1="400" y1="75" x2="400" y2="340" />
-                            <line x1="650" y1="75" x2="650" y2="340" />
-                        </g>
+                        <!-- 全長表示ディスプレイ -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-base text-zinc-400 font-bold">全長 (mm)</label>
+                                <button id="ipad-keraba-toggle" type="button" onclick="toggleTableKeraba()" aria-pressed="false" class="keraba-inline font-mono font-semibold">ケラバOFF</button>
+                            </div>
+                            <div class="w-full bg-[#111113] border-2 border-[#38383a] rounded-xl px-4 py-2 flex items-center justify-between">
+                                <span class="text-base text-zinc-500 font-mono font-bold">LENGTH</span>
+                                <div class="font-mono text-2xl font-black text-orange-400 tracking-tight">
+                                    <span id="ipad-display-totalLength"><span class="text-zinc-600 text-lg font-normal">全長を入力</span></span>
+                                    <span class="text-base text-zinc-500 font-bold ml-1.5">mm</span>
+                                </div>
+                            </div>
+                        </div>
 
-                        {/* 最上段寸法線: 500 */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="150" y1="20" x2="150" y2="45" />
-                            <line x1="650" y1="20" x2="650" y2="45" />
-                            <line x1="150" y1="35" x2="650" y2="35" markerStart="url(#arrow-start-500)" markerEnd="url(#arrow-end-500)" />
-                        </g>
-                        <rect x="375" y="21" width="50" height="24" rx="4" fill="#1c1c1e" />
-                        <text x="400" y="39" fill="#f4f4f5" fontSize="20" fontWeight="bold" textAnchor="middle">500</text>
+                        <!-- iPad最適化 2行テンキー -->
+                        <div class="pt-0.5">
+                            <div class="grid grid-cols-9 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-[#252528]">
+                                <button type="button" onclick="pressKey('00')" class="ipad-key col-span-3 text-xl">00</button>
+                                <button type="button" onclick="pressKey('0')" class="ipad-key col-span-3 text-xl">0</button>
+                                <button type="button" onclick="pressKey('clear')" class="ipad-key ipad-key-fn col-span-3" title="全長をクリア">C</button>
 
-                        {/* 山頂幅寸法線 (38, 38, 36) - 外側挟み込み矢印スタイル */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            {/* 左山 (38) */}
-                            <line x1="131" y1="65" x2="131" y2="95" />
-                            <line x1="169" y1="65" x2="169" y2="95" />
-                            <line x1="100" y1="78" x2="131" y2="78" markerEnd="url(#arrow-end-500)" />
-                            <line x1="200" y1="78" x2="169" y2="78" markerEnd="url(#arrow-end-500)" />
+                                <button type="button" onclick="pressKey('1')" class="ipad-key col-span-1">1</button>
+                                <button type="button" onclick="pressKey('2')" class="ipad-key col-span-1">2</button>
+                                <button type="button" onclick="pressKey('3')" class="ipad-key col-span-1">3</button>
+                                <button type="button" onclick="pressKey('4')" class="ipad-key col-span-1">4</button>
+                                <button type="button" onclick="pressKey('5')" class="ipad-key col-span-1">5</button>
+                                <button type="button" onclick="pressKey('6')" class="ipad-key col-span-1">6</button>
+                                <button type="button" onclick="pressKey('7')" class="ipad-key col-span-1">7</button>
+                                <button type="button" onclick="pressKey('8')" class="ipad-key col-span-1">8</button>
+                                <button type="button" onclick="pressKey('9')" class="ipad-key col-span-1 border-r-0">9</button>
+                            </div>
+                        </div>
+                    </div>
 
-                            {/* 中央山 (38) */}
-                            <line x1="381" y1="65" x2="381" y2="95" />
-                            <line x1="419" y1="65" x2="419" y2="95" />
-                            <line x1="350" y1="78" x2="381" y2="78" markerEnd="url(#arrow-end-500)" />
-                            <line x1="450" y1="78" x2="419" y2="78" markerEnd="url(#arrow-end-500)" />
+                    <!-- 折板屋根 断面プロファイル表示 -->
+                    <div id="ipad-profile-svg" class="profile-card ipad-card flex flex-col items-center justify-center bg-[#111113] border border-white/10"></div>
 
-                            {/* 右山 (36) */}
-                            <line x1="632" y1="65" x2="632" y2="95" />
-                            <line x1="668" y1="65" x2="668" y2="95" />
-                            <line x1="601" y1="78" x2="632" y2="78" markerEnd="url(#arrow-end-500)" />
-                            <line x1="699" y1="78" x2="668" y2="78" markerEnd="url(#arrow-end-500)" />
-                        </g>
-                        <text x="150" y="73" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">38</text>
-                        <text x="400" y="73" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">38</text>
-                        <text x="650" y="73" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">36</text>
+                    <!-- 端部基準 & 屋根材枚数カード -->
+                    <div class="summary-cards grid grid-cols-2">
+                        <div class="ipad-card border-l-4 border-l-[#0a84ff] bg-[#1c1c1e]">
+                            <span class="text-base text-blue-400 font-bold block mb-0.5">谷芯 端部基準 (タイト)</span>
+                            <div id="ipad-resTaniZan" class="text-[22px] font-mono font-bold text-white mb-0.5">-</div>
+                            <div class="text-base text-zinc-400 font-mono">通常タイト: <span id="ipad-countTani" class="text-blue-400 font-bold">- 本</span></div>
+                            <div class="text-base text-zinc-400 font-mono">屋根材谷芯: <span id="ipad-roofTaniCount" class="text-blue-400 font-bold">- 枚</span></div>
+                        </div>
+                        <div class="ipad-card border-l-4 border-l-[#30d158] bg-[#1c1c1e]">
+                            <span class="text-base text-emerald-400 font-bold block mb-0.5">山芯 端部基準 (タイト)</span>
+                            <div id="ipad-resYamaZan" class="text-[22px] font-mono font-bold text-white mb-0.5">-</div>
+                            <div class="text-base text-zinc-400 font-mono">通常タイト: <span id="ipad-countYama" class="text-emerald-400 font-bold">- 本</span></div>
+                            <div class="text-base text-zinc-400 font-mono">屋根材山芯: <span id="ipad-roofYamaCount" class="text-emerald-400 font-bold">- 枚</span></div>
+                        </div>
+                    </div>
+                </div>
 
-                        {/* 500 折板本体 断面ライン */}
-                        <path d="M 120 128 L 120 110 L 131 95 L 169 95 L 256 245 L 294 245 L 381 95 L 419 95 L 506 245 L 544 245 L 632 95 L 668 95 L 678 115"
-                              fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                <!-- 右カラム: 割付表・片張り表示 (7 / 12) -->
+                <div class="col-span-7 ipad-card flex flex-col overflow-hidden h-full">
+                    <div class="right-header shrink-0">
+                        <div class="right-tabs" role="tablist" aria-label="割付表示">
+                            <button id="ipad-tab-table" type="button" role="tab" aria-selected="true" onclick="setIpadRightTab('table')" class="selected">割付表</button>
+                            <button id="ipad-tab-edge" type="button" role="tab" aria-selected="false" onclick="setIpadRightTab('edge')">片張り</button>
+                        </div>
+                        <div class="length-share-row">
+                            <span class="font-bold">全長: <span id="ipad-right-L" class="text-orange-400">-</span> mm</span>
+                            <div class="header-actions">
+                                <button id="ipad-mode-btn" type="button" onclick="toggleTableKeraba()" aria-pressed="false" class="mode-button">割付表</button>
+                                <button id="ipad-share-btn" type="button" onclick="shareIpadCurrent()" class="share-icon" aria-label="共有" title="共有"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M7 10H5v11h14V10h-2"/></svg></button>
+                            </div>
+                        </div>
+                        <div class="font-bold mt-2 flex flex-wrap gap-x-4 gap-y-1 text-base">
+                            <div id="ipad-right-roof-info" class="flex flex-wrap gap-x-3 gap-y-1"></div>
+                            <div id="ipad-right-shoulders" class="flex flex-wrap gap-x-3 gap-y-1" title="① 全長の端から山の内側の肩まで（mm）"></div>
+                        </div>
+                        <div id="ipad-side-wrap" class="mt-2 hidden">
+                            <select id="ipad-side-select" aria-label="ケラバの取り付け側" onchange="setKerabaSide(this.value)" class="side-select">
+                                <option value="left">ケラバ：片端1本</option>
+                                <option value="both" selected>ケラバ：終始2本</option>
+                            </select>
+                        </div>
+                    </div>
 
-                        {/* 3R 3R アール表記（山頂内側・谷底内側） */}
-                        <g fill="#d4d4d8" fontSize="14" fontWeight="bold">
-                            {/* 左山 */}
-                            <text x="127" y="118">3R</text>
-                            <text x="153" y="118">3R</text>
-                            {/* 中央山 */}
-                            <text x="377" y="118">3R</text>
-                            <text x="403" y="118">3R</text>
-                            {/* 右山 */}
-                            <text x="628" y="118">3R</text>
-                            <text x="654" y="118">3R</text>
+                    <div id="ipad-layout-panel" role="tabpanel" class="flex-1 ipad-scroll bg-[#171719]">
+                        <table class="w-full text-center border-collapse">
+                            <thead class="sticky top-0 bg-[#252528] border-b border-white/10 font-mono z-10 shadow-sm">
+                                <tr>
+                                    <th class="py-3 px-2 text-zinc-400 font-bold w-12 border-r border-white/10 text-base">本</th>
+                                    <th id="ipad-th-left" class="py-3 px-2 text-[#0a84ff] font-bold border-r border-white/10 text-base">谷芯 (mm)</th>
+                                    <th id="ipad-th-right" class="py-3 px-2 text-[#30d158] font-bold text-base">山芯 (mm)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ipad-table-body" class="font-mono text-base"></tbody>
+                            <tfoot id="ipad-table-foot" class="bg-[#2c2c2e] border-t-2 border-[#48484a]"></tfoot>
+                        </table>
+                    </div>
 
-                            {/* 谷1 */}
-                            <text x="254" y="235">3R</text>
-                            <text x="277" y="235">3R</text>
-                            {/* 谷2 */}
-                            <text x="504" y="235">3R</text>
-                            <text x="527" y="235">3R</text>
-                        </g>
+                    <p id="ipad-right-note" class="px-3 py-2 text-base text-zinc-400 border-t border-white/10 shrink-0"></p>
+                </div>
+            </div>
+        </main>
+    </div>
 
-                        {/* 高さ寸法 (150) */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="75" y1="95" x2="131" y2="95" />
-                            <line x1="75" y1="245" x2="256" y2="245" />
-                            <line x1="90" y1="95" x2="90" y2="245" markerStart="url(#arrow-start-500)" markerEnd="url(#arrow-end-500)" />
-                        </g>
-                        <text x="75" y="176" fill="#f4f4f5" fontSize="20" fontWeight="bold" textAnchor="end">150</text>
+<script>
+    let currentActiveTab = 'calc';
+    let ipadRightTab = 'table';
+    let focusedInputId = 'totalLength';
+    let isOverwriteMode = true;
+    const storageKey = 'tight_frame_v14_final';
+    const splitViewQuery = window.matchMedia('(min-width: 768px)');
 
-                        {/* 谷底平部寸法線 (38, 38) */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            {/* 谷1 */}
-                            <line x1="256" y1="245" x2="256" y2="275" />
-                            <line x1="294" y1="245" x2="294" y2="275" />
-                            <line x1="225" y1="262" x2="256" y2="262" markerEnd="url(#arrow-end-500)" />
-                            <line x1="325" y1="262" x2="294" y2="262" markerEnd="url(#arrow-end-500)" />
-                            {/* 谷2 */}
-                            <line x1="506" y1="245" x2="506" y2="275" />
-                            <line x1="544" y1="245" x2="544" y2="275" />
-                            <line x1="475" y1="262" x2="506" y2="262" markerEnd="url(#arrow-end-500)" />
-                            <line x1="575" y1="262" x2="544" y2="262" markerEnd="url(#arrow-end-500)" />
-                        </g>
-                        <text x="275" y="268" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">38</text>
-                        <text x="525" y="268" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">38</text>
+    const inputs = { totalLength: '', size: '600' };
+    let kerabaSide = 'both';
+    let tableKeraba = false;
 
-                        {/* 下部 ピッチ寸法線 (250, 250) */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="150" y1="315" x2="400" y2="315" markerStart="url(#arrow-start-500)" markerEnd="url(#arrow-end-500)" />
-                            <line x1="400" y1="315" x2="650" y2="315" markerStart="url(#arrow-start-500)" markerEnd="url(#arrow-end-500)" />
-                        </g>
-                        <rect x="250" y="322" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="275" y="339" fill="#f4f4f5" fontSize="19" fontWeight="bold" textAnchor="middle">250</text>
-                        <rect x="500" y="322" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="525" y="339" fill="#f4f4f5" fontSize="19" fontWeight="bold" textAnchor="middle">250</text>
-                    </svg>
-                );
-            } else if (size === '1000') {
-                return (
-                    <svg viewBox="0 0 760 380" className="w-full h-auto max-h-[240px] text-white select-none font-mono">
-                        <defs>
-                            <marker id="arrow-start-1000" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                                <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#e4e4e7" />
-                            </marker>
-                            <marker id="arrow-end-1000" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                                <path d="M 2 1.5 L 10 5 L 2 8.5 z" fill="#e4e4e7" />
-                            </marker>
-                        </defs>
+    // 計算ロジック・定数・丸め処理は1文字も変更しない
+    const CONFIG={600:{pitch:200,roofWidth:600,valleys:3,mountains:3,frameWidth:600},500:{pitch:250,roofWidth:500,valleys:2,mountains:2,frameWidth:500},1000:{pitch:500,roofWidth:500,valleys:1,mountains:2,frameWidth:1000}};
+    const fmt=n=>n.toLocaleString('ja-JP',{maximumFractionDigits:3});
+    const mod=(n,p)=>((n%p)+p)%p;
+    const tolerantCeil=n=>Math.max(0,Math.ceil(n-1e-9));
+    const tolerantFloor=n=>Math.floor(n+1e-9);
+    function calculateModel(length,type,mode){
+     const c=CONFIG[type],L=Number(length);
+     if(!c||!['edge','tani','yama'].includes(mode))return {error:'タイプ・割付基準を確認してください。'};
+     if(String(length).trim()===''||!Number.isFinite(L)||L<=60)return {error:'外端間の全長を60mmより大きい数値で入力してください。'};
+     if(L>1000000)return {error:'全長は1,000,000mm以下で入力してください。'};
+     const core=mode==='edge'?L-60:L,p=c.pitch;
+     const origin=mode==='edge'?30:0;
+     const firstCore=mode==='edge'?0:mod(core/2-(mode==='tani'?p/2:0),p);
+     const start=Math.abs(firstCore)<1e-7||Math.abs(firstCore-p)<1e-7?0:firstCore;
+     const count=start<=core+1e-7?tolerantFloor((core-start)/p)+1:0;
+     const peaks=Array.from({length:Math.max(0,count)},(_,i)=>origin+start+i*p);
+     if(!peaks.length)return {error:'この全長と中央割付では、計算範囲内に山が入りません。端から山始まりを選ぶか、端部の納まりを確認してください。'};
+     // 屋根材とタイトで同じ山・谷の位置を使用。切断線の内側にある谷芯を数える。
+     const valleyPhase=mod(origin+start+p/2,p);
+     const firstValley=Math.abs(valleyPhase)<1e-7? p:valleyPhase;
+     const valleys=firstValley<L-1e-7?tolerantCeil((L-firstValley)/p):0;
+     const roofCount=Math.max(1,tolerantCeil(valleys/c.valleys));
+     const frames=tolerantCeil(peaks.length/c.mountains);
+     const unused=frames*c.mountains-peaks.length;
+     return {L,core,c,start,peaks,valleys,roofCount,frames,unused,roofUnused:roofCount*c.valleys-valleys,rows:groupPeaks(peaks,c)};
+    }
+    function groupPeaks(peaks,c){const rows=[];for(let i=0;i<peaks.length;i+=c.mountains){const used=peaks.slice(i,i+c.mountains);rows.push({start:used[0]-c.pitch/2,end:used[used.length-1]+c.pitch/2,peaks:used});}return rows;}
+    function kerabaModel(r,kind){
+     if(r.error)return r;
+     const inside=r.peaks.filter(x=>x>1e-7&&x<r.L-1e-7);
+     const count=kind==='both'?2:1;
+     if(inside.length<count)return {error:'全長の内側にケラバを配置する山数が足りません。'};
+     const left=inside[0],right=kind==='both'?inside[inside.length-1]:null;
+     // ケラバより外側・切断線上の山を通常タイトへ戻さない。
+     const normal=r.peaks.filter(x=>x>left+1e-7&&(right==null||x<right-1e-7));
+     const rows=groupPeaks(normal,r.c).map(row=>({...row,start:Math.max(0,row.start),end:Math.min(r.L,row.end)}));
+     return {...r,count,normal,frames:tolerantCeil(normal.length/r.c.mountains),unused:tolerantCeil(normal.length/r.c.mountains)*r.c.mountains-normal.length,rows,left,right};
+    }
 
-                        {/* 基準芯 A, B (一点鎖線) */}
-                        <g stroke="#71717a" strokeWidth="1.2" strokeDasharray="8,4,2,4">
-                            <line x1="120" y1="50" x2="120" y2="360" />
-                            <line x1="620" y1="50" x2="620" y2="360" />
-                        </g>
-                        <text x="120" y="32" fill="#f4f4f5" fontSize="22" fontWeight="bold" textAnchor="middle">A</text>
-                        <text x="620" y="32" fill="#f4f4f5" fontSize="22" fontWeight="bold" textAnchor="middle">B</text>
+    function getRoofProfileSVGMarkup(size) {
+        if (size === '600') {
+            return `<svg viewBox="0 0 800 370" class="w-full h-auto max-h-[240px] text-white select-none font-mono">
+                <defs>
+                    <marker id="arrow-start-600" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#e4e4e7" />
+                    </marker>
+                    <marker id="arrow-end-600" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 2 1.5 L 10 5 L 2 8.5 z" fill="#e4e4e7" />
+                    </marker>
+                </defs>
+                <g stroke="#71717a" stroke-width="1.2" stroke-dasharray="8,4,2,4">
+                    <line x1="100" y1="50" x2="100" y2="230" />
+                    <line x1="280" y1="50" x2="280" y2="230" />
+                    <line x1="460" y1="50" x2="460" y2="230" />
+                    <line x1="640" y1="50" x2="640" y2="230" />
+                </g>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="100" y1="20" x2="100" y2="40" />
+                    <line x1="640" y1="20" x2="640" y2="40" />
+                    <line x1="100" y1="30" x2="640" y2="30" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                </g>
+                <rect x="345" y="16" width="50" height="24" rx="4" fill="#1c1c1e" />
+                <text x="370" y="34" fill="#f4f4f5" font-size="20" font-weight="bold" text-anchor="middle">600</text>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="100" y1="58" x2="100" y2="76" />
+                    <line x1="280" y1="58" x2="280" y2="76" />
+                    <line x1="460" y1="58" x2="460" y2="76" />
+                    <line x1="640" y1="58" x2="640" y2="76" />
+                    <line x1="100" y1="67" x2="280" y2="67" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                    <line x1="280" y1="67" x2="460" y2="67" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                    <line x1="460" y1="67" x2="640" y2="67" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                </g>
+                <rect x="165" y="55" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="190" y="72" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">200</text>
+                <rect x="345" y="55" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="370" y="72" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">200</text>
+                <rect x="525" y="55" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="550" y="72" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">200</text>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="83.25" y1="95" x2="83.25" y2="175" />
+                    <line x1="116.75" y1="95" x2="116.75" y2="175" />
+                    <line x1="83.25" y1="125" x2="116.75" y2="125" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                    <line x1="262.5" y1="95" x2="262.5" y2="175" />
+                    <line x1="297.5" y1="95" x2="297.5" y2="175" />
+                    <line x1="262.5" y1="125" x2="297.5" y2="125" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                    <line x1="442.5" y1="95" x2="442.5" y2="175" />
+                    <line x1="477.5" y1="95" x2="477.5" y2="175" />
+                    <line x1="442.5" y1="125" x2="477.5" y2="125" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                    <line x1="622.5" y1="95" x2="622.5" y2="175" />
+                    <line x1="657.5" y1="95" x2="657.5" y2="175" />
+                    <line x1="622.5" y1="125" x2="657.5" y2="125" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                </g>
+                <text x="100" y="117" fill="#f4f4f5" font-size="16" font-weight="bold" text-anchor="middle">33.5</text>
+                <text x="280" y="117" fill="#f4f4f5" font-size="16" font-weight="bold" text-anchor="middle">35</text>
+                <text x="460" y="117" fill="#f4f4f5" font-size="16" font-weight="bold" text-anchor="middle">35</text>
+                <text x="640" y="117" fill="#f4f4f5" font-size="16" font-weight="bold" text-anchor="middle">35</text>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="83.25" y1="175" x2="67" y2="155" />
+                    <line x1="69.25" y1="195" x2="53" y2="175" />
+                    <line x1="64" y1="160" x2="56" y2="170" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                </g>
+                <text x="45" y="160" fill="#f4f4f5" font-size="16" font-weight="bold" text-anchor="end" transform="rotate(-50 45 160)">20</text>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="657.5" y1="175" x2="673.75" y2="155" />
+                    <line x1="671.5" y1="195" x2="687.75" y2="175" />
+                    <line x1="677" y1="160" x2="685" y2="170" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                </g>
+                <text x="702" y="152" fill="#f4f4f5" font-size="16" font-weight="bold" text-anchor="start" transform="rotate(50 702 152)">20</text>
+                <path d="M 69.25 195 L 83.25 175 L 116.75 175 L 172.5 263 L 207.5 263 L 262.5 175 L 297.5 175 L 352.5 263 L 387.5 263 L 442.5 175 L 477.5 175 L 532.5 263 L 567.5 263 L 622.5 175 L 657.5 175 L 671.5 195"
+                      fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="138" y1="175" x2="195" y2="175" />
+                    <line x1="195" y1="175" x2="195" y2="263" />
+                    <line x1="195" y1="263" x2="195" y2="263" />
+                </g>
+                <rect x="180" y="206" width="30" height="20" rx="3" fill="#1c1c1e" />
+                <text x="195" y="222" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">88</text>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="172.5" y1="263" x2="172.5" y2="330" />
+                    <line x1="207.5" y1="263" x2="207.5" y2="330" />
+                    <line x1="172.5" y1="315" x2="207.5" y2="315" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                    <line x1="352.5" y1="263" x2="352.5" y2="330" />
+                    <line x1="387.5" y1="263" x2="387.5" y2="330" />
+                    <line x1="352.5" y1="315" x2="387.5" y2="315" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                    <line x1="532.5" y1="263" x2="532.5" y2="330" />
+                    <line x1="567.5" y1="263" x2="567.5" y2="330" />
+                    <line x1="532.5" y1="315" x2="567.5" y2="315" marker-start="url(#arrow-start-600)" marker-end="url(#arrow-end-600)" />
+                </g>
+                <text x="190" y="348" fill="#f4f4f5" font-size="17" font-weight="bold" text-anchor="middle">35</text>
+                <text x="370" y="348" fill="#f4f4f5" font-size="17" font-weight="bold" text-anchor="middle">35</text>
+                <text x="550" y="348" fill="#f4f4f5" font-size="17" font-weight="bold" text-anchor="middle">35</text>
+            </svg>`;
+        } else if (size === '500') {
+            return `<svg viewBox="0 0 800 370" class="w-full h-auto max-h-[240px] text-white select-none font-mono">
+                <defs>
+                    <marker id="arrow-start-500" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#e4e4e7" />
+                    </marker>
+                    <marker id="arrow-end-500" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 2 1.5 L 10 5 L 2 8.5 z" fill="#e4e4e7" />
+                    </marker>
+                </defs>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="150" y1="75" x2="150" y2="340" />
+                    <line x1="400" y1="75" x2="400" y2="340" />
+                    <line x1="650" y1="75" x2="650" y2="340" />
+                </g>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="150" y1="20" x2="150" y2="45" />
+                    <line x1="650" y1="20" x2="650" y2="45" />
+                    <line x1="150" y1="35" x2="650" y2="35" marker-start="url(#arrow-start-500)" marker-end="url(#arrow-end-500)" />
+                </g>
+                <rect x="375" y="21" width="50" height="24" rx="4" fill="#1c1c1e" />
+                <text x="400" y="39" fill="#f4f4f5" font-size="20" font-weight="bold" text-anchor="middle">500</text>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="131" y1="65" x2="131" y2="95" />
+                    <line x1="169" y1="65" x2="169" y2="95" />
+                    <line x1="100" y1="78" x2="131" y2="78" marker-end="url(#arrow-end-500)" />
+                    <line x1="200" y1="78" x2="169" y2="78" marker-end="url(#arrow-end-500)" />
+                    <line x1="381" y1="65" x2="381" y2="95" />
+                    <line x1="419" y1="65" x2="419" y2="95" />
+                    <line x1="350" y1="78" x2="381" y2="78" marker-end="url(#arrow-end-500)" />
+                    <line x1="450" y1="78" x2="419" y2="78" marker-end="url(#arrow-end-500)" />
+                    <line x1="632" y1="65" x2="632" y2="95" />
+                    <line x1="668" y1="65" x2="668" y2="95" />
+                    <line x1="601" y1="78" x2="632" y2="78" marker-end="url(#arrow-end-500)" />
+                    <line x1="699" y1="78" x2="668" y2="78" marker-end="url(#arrow-end-500)" />
+                </g>
+                <text x="150" y="73" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">38</text>
+                <text x="400" y="73" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">38</text>
+                <text x="650" y="73" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">36</text>
+                <path d="M 120 128 L 120 110 L 131 95 L 169 95 L 256 245 L 294 245 L 381 95 L 419 95 L 506 245 L 544 245 L 632 95 L 668 95 L 678 115"
+                      fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                <g fill="#d4d4d8" font-size="14" font-weight="bold">
+                    <text x="127" y="118">3R</text><text x="153" y="118">3R</text>
+                    <text x="377" y="118">3R</text><text x="403" y="118">3R</text>
+                    <text x="628" y="118">3R</text><text x="654" y="118">3R</text>
+                    <text x="254" y="235">3R</text><text x="277" y="235">3R</text>
+                    <text x="504" y="235">3R</text><text x="527" y="235">3R</text>
+                </g>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="75" y1="95" x2="131" y2="95" />
+                    <line x1="75" y1="245" x2="256" y2="245" />
+                    <line x1="90" y1="95" x2="90" y2="245" marker-start="url(#arrow-start-500)" marker-end="url(#arrow-end-500)" />
+                </g>
+                <text x="75" y="176" fill="#f4f4f5" font-size="20" font-weight="bold" text-anchor="end">150</text>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="256" y1="245" x2="256" y2="275" />
+                    <line x1="294" y1="245" x2="294" y2="275" />
+                    <line x1="225" y1="262" x2="256" y2="262" marker-end="url(#arrow-end-500)" />
+                    <line x1="325" y1="262" x2="294" y2="262" marker-end="url(#arrow-end-500)" />
+                    <line x1="506" y1="245" x2="506" y2="275" />
+                    <line x1="544" y1="245" x2="544" y2="275" />
+                    <line x1="475" y1="262" x2="506" y2="262" marker-end="url(#arrow-end-500)" />
+                    <line x1="575" y1="262" x2="544" y2="262" marker-end="url(#arrow-end-500)" />
+                </g>
+                <text x="275" y="268" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">38</text>
+                <text x="525" y="268" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">38</text>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="150" y1="315" x2="400" y2="315" marker-start="url(#arrow-start-500)" marker-end="url(#arrow-end-500)" />
+                    <line x1="400" y1="315" x2="650" y2="315" marker-start="url(#arrow-start-500)" marker-end="url(#arrow-end-500)" />
+                </g>
+                <rect x="250" y="322" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="275" y="339" fill="#f4f4f5" font-size="19" font-weight="bold" text-anchor="middle">250</text>
+                <rect x="500" y="322" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="525" y="339" fill="#f4f4f5" font-size="19" font-weight="bold" text-anchor="middle">250</text>
+            </svg>`;
+        } else if (size === '1000') {
+            return `<svg viewBox="0 0 760 380" class="w-full h-auto max-h-[240px] text-white select-none font-mono">
+                <defs>
+                    <marker id="arrow-start-1000" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#e4e4e7" />
+                    </marker>
+                    <marker id="arrow-end-1000" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 2 1.5 L 10 5 L 2 8.5 z" fill="#e4e4e7" />
+                    </marker>
+                </defs>
+                <g stroke="#71717a" stroke-width="1.2" stroke-dasharray="8,4,2,4">
+                    <line x1="120" y1="50" x2="120" y2="360" />
+                    <line x1="620" y1="50" x2="620" y2="360" />
+                </g>
+                <text x="120" y="32" fill="#f4f4f5" font-size="22" font-weight="bold" text-anchor="middle">A</text>
+                <text x="620" y="32" fill="#f4f4f5" font-size="22" font-weight="bold" text-anchor="middle">B</text>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="120" y1="40" x2="120" y2="60" />
+                    <line x1="620" y1="40" x2="620" y2="60" />
+                    <line x1="120" y1="50" x2="620" y2="50" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                </g>
+                <rect x="345" y="36" width="50" height="24" rx="4" fill="#1c1c1e" />
+                <text x="370" y="54" fill="#f4f4f5" font-size="20" font-weight="bold" text-anchor="middle">500</text>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="109.5" y1="80" x2="109.5" y2="105" />
+                    <line x1="130.5" y1="80" x2="130.5" y2="105" />
+                    <line x1="85" y1="90" x2="109.5" y2="90" marker-end="url(#arrow-end-1000)" />
+                    <line x1="155" y1="90" x2="130.5" y2="90" marker-end="url(#arrow-end-1000)" />
+                    <line x1="612" y1="80" x2="612" y2="105" />
+                    <line x1="628" y1="80" x2="628" y2="105" />
+                    <line x1="590" y1="90" x2="612" y2="90" marker-end="url(#arrow-end-1000)" />
+                    <line x1="650" y1="90" x2="628" y2="90" marker-end="url(#arrow-end-1000)" />
+                </g>
+                <text x="120" y="85" fill="#f4f4f5" font-size="17" font-weight="bold" text-anchor="middle">21</text>
+                <text x="620" y="85" fill="#f4f4f5" font-size="17" font-weight="bold" text-anchor="middle">16</text>
+                <path d="M 97 132 L 105 125 L 109.5 105 L 130.5 105 L 130.5 131 L 171.5 131 L 270 288 L 470 288 L 568.5 131 L 610 131 L 610 120 L 626 120 L 626 137 L 634 137 L 634 105 L 610 105 L 610 110"
+                      fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="85" y1="110" x2="99" y2="124" marker-end="url(#arrow-end-1000)" />
+                </g>
+                <g stroke="#a1a1aa" stroke-width="1">
+                    <line x1="130.5" y1="131" x2="130.5" y2="180" />
+                    <line x1="171.5" y1="131" x2="171.5" y2="180" />
+                    <line x1="130.5" y1="165" x2="171.5" y2="165" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                    <line x1="568.5" y1="131" x2="568.5" y2="180" />
+                    <line x1="609.5" y1="131" x2="609.5" y2="180" />
+                    <line x1="568.5" y1="165" x2="609.5" y2="165" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                </g>
+                <text x="151" y="156" fill="#f4f4f5" font-size="17" font-weight="bold" text-anchor="middle">41</text>
+                <text x="589" y="156" fill="#f4f4f5" font-size="17" font-weight="bold" text-anchor="middle">41</text>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="130.5" y1="105" x2="240" y2="105" />
+                    <line x1="171.5" y1="131" x2="230" y2="131" />
+                    <line x1="225" y1="85" x2="225" y2="105" marker-end="url(#arrow-end-1000)" />
+                    <line x1="225" y1="150" x2="225" y2="131" marker-end="url(#arrow-end-1000)" />
+                    <line x1="270" y1="288" x2="385" y2="288" />
+                    <line x1="171.5" y1="131" x2="330" y2="131" />
+                    <line x1="315" y1="131" x2="315" y2="288" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                    <line x1="130.5" y1="105" x2="365" y2="105" />
+                    <line x1="350" y1="105" x2="350" y2="288" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                    <line x1="634" y1="105" x2="665" y2="105" />
+                    <line x1="634" y1="137" x2="665" y2="137" />
+                    <line x1="655" y1="85" x2="655" y2="105" marker-end="url(#arrow-end-1000)" />
+                    <line x1="655" y1="157" x2="655" y2="137" marker-end="url(#arrow-end-1000)" />
+                </g>
+                <text x="225" y="123" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">26</text>
+                <text x="305" y="215" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle" transform="rotate(-90 305 215)">160</text>
+                <text x="340" y="200" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle" transform="rotate(-90 340 200)">183</text>
+                <text x="670" y="126" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="start">24</text>
+                <g stroke="#a1a1aa" stroke-width="1.2">
+                    <line x1="120" y1="315" x2="120" y2="335" />
+                    <line x1="270" y1="288" x2="270" y2="335" />
+                    <line x1="470" y1="288" x2="470" y2="335" />
+                    <line x1="620" y1="315" x2="620" y2="335" />
+                    <line x1="120" y1="325" x2="270" y2="325" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                    <line x1="270" y1="325" x2="470" y2="325" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                    <line x1="470" y1="325" x2="620" y2="325" marker-start="url(#arrow-start-1000)" marker-end="url(#arrow-end-1000)" />
+                </g>
+                <rect x="170" y="332" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="195" y="349" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">150</text>
+                <rect x="345" y="332" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="370" y="349" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">200</text>
+                <rect x="520" y="332" width="50" height="22" rx="3" fill="#1c1c1e" />
+                <text x="545" y="349" fill="#f4f4f5" font-size="18" font-weight="bold" text-anchor="middle">150</text>
+            </svg>`;
+        }
+        return '';
+    }
 
-                        {/* 上部寸法線 (500) */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="120" y1="40" x2="120" y2="60" />
-                            <line x1="620" y1="40" x2="620" y2="60" />
-                            <line x1="120" y1="50" x2="620" y2="50" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-                        </g>
-                        <rect x="345" y="36" width="50" height="24" rx="4" fill="#1c1c1e" />
-                        <text x="370" y="54" fill="#f4f4f5" fontSize="20" fontWeight="bold" textAnchor="middle">500</text>
+    function switchTab(tabName) {
+        currentActiveTab = tabName;
+        document.getElementById('view-calc').classList.toggle('hidden', tabName !== 'calc');
+        document.getElementById('view-table').classList.toggle('hidden', tabName !== 'table');
+        document.getElementById('tab-calc').classList.toggle('active', tabName === 'calc');
+        document.getElementById('tab-table').classList.toggle('active', tabName === 'table');
+        document.getElementById('view-edge').classList.toggle('hidden', tabName !== 'edge');
+        document.getElementById('tab-edge').classList.toggle('active', tabName === 'edge');
+        if (tabName === 'edge') generateEdge();
+        if (tabName === 'table') generateTable();
+        window.scrollTo(0, 0);
+    }
 
-                        {/* ハゼ部寸法線: 左(21), 右(16) */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            {/* 左 21 */}
-                            <line x1="109.5" y1="80" x2="109.5" y2="105" />
-                            <line x1="130.5" y1="80" x2="130.5" y2="105" />
-                            <line x1="85" y1="90" x2="109.5" y2="90" markerEnd="url(#arrow-end-1000)" />
-                            <line x1="155" y1="90" x2="130.5" y2="90" markerEnd="url(#arrow-end-1000)" />
+    function setIpadRightTab(tabName) {
+        ipadRightTab = (tabName === 'edge') ? 'edge' : 'table';
+        document.getElementById('ipad-tab-table').classList.toggle('selected', ipadRightTab === 'table');
+        document.getElementById('ipad-tab-edge').classList.toggle('selected', ipadRightTab === 'edge');
+        document.getElementById('ipad-tab-table').setAttribute('aria-selected', String(ipadRightTab === 'table'));
+        document.getElementById('ipad-tab-edge').setAttribute('aria-selected', String(ipadRightTab === 'edge'));
+        renderIpadRightPane();
+    }
 
-                            {/* 右 16 */}
-                            <line x1="612" y1="80" x2="612" y2="105" />
-                            <line x1="628" y1="80" x2="628" y2="105" />
-                            <line x1="590" y1="90" x2="612" y2="90" markerEnd="url(#arrow-end-1000)" />
-                            <line x1="650" y1="90" x2="628" y2="90" markerEnd="url(#arrow-end-1000)" />
-                        </g>
-                        <text x="120" y="85" fill="#f4f4f5" fontSize="17" fontWeight="bold" textAnchor="middle">21</text>
-                        <text x="620" y="85" fill="#f4f4f5" fontSize="17" fontWeight="bold" textAnchor="middle">16</text>
+    function focusInput(id) {
+        document.querySelectorAll('.calc-cell').forEach(el => el.classList.remove('focused'));
+        const displayEl = document.getElementById(`display-${id}`);
+        if (displayEl) {
+            displayEl.parentElement.classList.add('focused');
+            focusedInputId = id;
+            isOverwriteMode = true;
+        }
+    }
 
-                        {/* 大型馳折板 本体 断面線 (白色 5px 実線) */}
-                        <path d="M 97 132 L 105 125 L 109.5 105 L 130.5 105 L 130.5 131 L 171.5 131 L 270 288 L 470 288 L 568.5 131 L 610 131 L 610 120 L 626 120 L 626 137 L 634 137 L 634 105 L 610 105 L 610 110"
-                              fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+    function handleSelectChange(val) {
+        inputs.size = val;
+        const mSel = document.getElementById('sizeSelect');
+        const iSel = document.getElementById('ipad-type');
+        if (mSel) mSel.value = val;
+        if (iSel) iSel.value = val;
+        updateDisplay();
+        calculate();
+    }
 
-                        {/* 左端 小リブ引き出し矢印 */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            <line x1="85" y1="110" x2="99" y2="124" markerEnd="url(#arrow-end-1000)" />
-                        </g>
-
-                        {/* 肩部 水平寸法 (41, 41) */}
-                        <g stroke="#a1a1aa" strokeWidth="1">
-                            {/* 左 41 */}
-                            <line x1="130.5" y1="131" x2="130.5" y2="180" />
-                            <line x1="171.5" y1="131" x2="171.5" y2="180" />
-                            <line x1="130.5" y1="165" x2="171.5" y2="165" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-                            {/* 右 41 */}
-                            <line x1="568.5" y1="131" x2="568.5" y2="180" />
-                            <line x1="609.5" y1="131" x2="609.5" y2="180" />
-                            <line x1="568.5" y1="165" x2="609.5" y2="165" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-                        </g>
-                        <text x="151" y="156" fill="#f4f4f5" fontSize="17" fontWeight="bold" textAnchor="middle">41</text>
-                        <text x="589" y="156" fill="#f4f4f5" fontSize="17" fontWeight="bold" textAnchor="middle">41</text>
-
-                        {/* 高さ寸法 (26, 160, 183) */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            {/* 段差 26 */}
-                            <line x1="130.5" y1="105" x2="240" y2="105" />
-                            <line x1="171.5" y1="131" x2="230" y2="131" />
-                            <line x1="225" y1="85" x2="225" y2="105" markerEnd="url(#arrow-end-1000)" />
-                            <line x1="225" y1="150" x2="225" y2="131" markerEnd="url(#arrow-end-1000)" />
-
-                            {/* 160 (谷底〜肩部) */}
-                            <line x1="270" y1="288" x2="385" y2="288" />
-                            <line x1="171.5" y1="131" x2="330" y2="131" />
-                            <line x1="315" y1="131" x2="315" y2="288" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-
-                            {/* 183 (谷底〜ハゼ頂部) */}
-                            <line x1="130.5" y1="105" x2="365" y2="105" />
-                            <line x1="350" y1="105" x2="350" y2="288" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-
-                            {/* 右ハゼ高さ 24 */}
-                            <line x1="634" y1="105" x2="665" y2="105" />
-                            <line x1="634" y1="137" x2="665" y2="137" />
-                            <line x1="655" y1="85" x2="655" y2="105" markerEnd="url(#arrow-end-1000)" />
-                            <line x1="655" y1="157" x2="655" y2="137" markerEnd="url(#arrow-end-1000)" />
-                        </g>
-                        <text x="225" y="123" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">26</text>
-                        <text x="305" y="215" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle" transform="rotate(-90 305 215)">160</text>
-                        <text x="340" y="200" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle" transform="rotate(-90 340 200)">183</text>
-                        <text x="670" y="126" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="start">24</text>
-
-                        {/* 下部 割付寸法線 (150, 200, 150) */}
-                        <g stroke="#a1a1aa" strokeWidth="1.2">
-                            <line x1="120" y1="315" x2="120" y2="335" />
-                            <line x1="270" y1="288" x2="270" y2="335" />
-                            <line x1="470" y1="288" x2="470" y2="335" />
-                            <line x1="620" y1="315" x2="620" y2="335" />
-
-                            <line x1="120" y1="325" x2="270" y2="325" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-                            <line x1="270" y1="325" x2="470" y2="325" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-                            <line x1="470" y1="325" x2="620" y2="325" markerStart="url(#arrow-start-1000)" markerEnd="url(#arrow-end-1000)" />
-                        </g>
-                        <rect x="170" y="332" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="195" y="349" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">150</text>
-                        <rect x="345" y="332" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="370" y="349" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">200</text>
-                        <rect x="520" y="332" width="50" height="22" rx="3" fill="#1c1c1e" />
-                        <text x="545" y="349" fill="#f4f4f5" fontSize="18" fontWeight="bold" textAnchor="middle">150</text>
-                    </svg>
-                );
+    function pressKey(key) {
+        if (key === 'backspace') {
+            inputs[focusedInputId] = inputs[focusedInputId].toString().slice(0, -1);
+            isOverwriteMode = false;
+        } else if (key === 'clear' || key === 'clearAll') {
+            inputs.totalLength = '';
+            isOverwriteMode = true;
+        } else if (key === 'enter') {
+            handleEnter();
+            return;
+        } else {
+            if (isOverwriteMode) {
+                inputs[focusedInputId] = key;
+                isOverwriteMode = false;
+            } else {
+                if (inputs[focusedInputId] === '0') inputs[focusedInputId] = key;
+                else inputs[focusedInputId] += key;
             }
-            return null;
-        };
+            if (inputs[focusedInputId].length > 8) {
+                inputs[focusedInputId] = inputs[focusedInputId].slice(0, 8);
+            }
+        }
+        updateDisplay();
+        calculate();
+    }
 
-const CONFIG={600:{pitch:200,roofWidth:600,valleys:3,mountains:3,frameWidth:600},500:{pitch:250,roofWidth:500,valleys:2,mountains:2,frameWidth:500},1000:{pitch:500,roofWidth:500,valleys:1,mountains:2,frameWidth:1000}};
-const fmt=n=>n.toLocaleString('ja-JP',{maximumFractionDigits:3});
-const mod=(n,p)=>((n%p)+p)%p;
-const tolerantCeil=n=>Math.max(0,Math.ceil(n-1e-9));
-const tolerantFloor=n=>Math.floor(n+1e-9);
-function calculateModel(length,type,mode){
- const c=CONFIG[type],L=Number(length);
- if(!c||!['edge','tani','yama'].includes(mode))return {error:'タイプ・割付基準を確認してください。'};
- if(String(length).trim()===''||!Number.isFinite(L)||L<=60)return {error:'外端間の全長を60mmより大きい数値で入力してください。'};
- if(L>1000000)return {error:'全長は1,000,000mm以下で入力してください。'};
- const core=mode==='edge'?L-60:L,p=c.pitch;
- const origin=mode==='edge'?30:0;
- const firstCore=mode==='edge'?0:mod(core/2-(mode==='tani'?p/2:0),p);
- const start=Math.abs(firstCore)<1e-7||Math.abs(firstCore-p)<1e-7?0:firstCore;
- const count=start<=core+1e-7?tolerantFloor((core-start)/p)+1:0;
- const peaks=Array.from({length:Math.max(0,count)},(_,i)=>origin+start+i*p);
- if(!peaks.length)return {error:'この全長と中央割付では、計算範囲内に山が入りません。端から山始まりを選ぶか、端部の納まりを確認してください。'};
- // 屋根材とタイトで同じ山・谷の位置を使用。切断線の内側にある谷芯を数える。
- const valleyPhase=mod(origin+start+p/2,p);
- const firstValley=Math.abs(valleyPhase)<1e-7? p:valleyPhase;
- const valleys=firstValley<L-1e-7?tolerantCeil((L-firstValley)/p):0;
- // 山が存在する有効な割付では、谷芯が切断範囲内にない場合も屋根材が最低1枚必要。
- const roofCount=Math.max(1,tolerantCeil(valleys/c.valleys));
- const frames=tolerantCeil(peaks.length/c.mountains);
- const unused=frames*c.mountains-peaks.length;
- return {L,core,c,start,peaks,valleys,roofCount,frames,unused,roofUnused:roofCount*c.valleys-valleys,rows:groupPeaks(peaks,c)};
-}
-function groupPeaks(peaks,c){const rows=[];for(let i=0;i<peaks.length;i+=c.mountains){const used=peaks.slice(i,i+c.mountains);rows.push({start:used[0]-c.pitch/2,end:used[used.length-1]+c.pitch/2,peaks:used});}return rows;}
-function kerabaModel(r,kind){
- if(r.error)return r;
- const inside=r.peaks.filter(x=>x>1e-7&&x<r.L-1e-7);
- const count=kind==='both'?2:1;
- if(inside.length<count)return {error:'全長の内側にケラバを配置する山数が足りません。'};
- const left=inside[0],right=kind==='both'?inside[inside.length-1]:null;
- // ケラバより外側・切断線上の山を通常タイトへ戻さない。
- const normal=r.peaks.filter(x=>x>left+1e-7&&(right==null||x<right-1e-7));
- const rows=groupPeaks(normal,r.c).map(row=>({...row,start:Math.max(0,row.start),end:Math.min(r.L,row.end)}));
- return {...r,count,normal,frames:tolerantCeil(normal.length/r.c.mountains),unused:tolerantCeil(normal.length/r.c.mountains)*r.c.mountains-normal.length,rows,left,right};
-}
+    function handleEnter() {
+        if (focusedInputId === 'totalLength') switchTab('table');
+    }
 
+    function updateDisplay() {
+        const sizeDisplay = document.getElementById('display-size');
+        if (sizeDisplay) { sizeDisplay.innerText = inputs.size; }
+        const tlDisplay = document.getElementById('display-totalLength');
+        if (tlDisplay) {
+            if (inputs.totalLength === '') { tlDisplay.innerText = '0'; tlDisplay.style.opacity = '0.3'; }
+            else { tlDisplay.innerText = parseFloat(inputs.totalLength).toLocaleString('ja-JP'); tlDisplay.style.opacity = '1'; }
+        }
+        const ipadTlDisplay = document.getElementById('ipad-display-totalLength');
+        if (ipadTlDisplay) {
+            if (inputs.totalLength === '') {
+                ipadTlDisplay.innerHTML = '<span class="text-zinc-600 text-lg font-normal">全長を入力</span>';
+            } else {
+                ipadTlDisplay.innerText = parseFloat(inputs.totalLength).toLocaleString('ja-JP');
+            }
+        }
+        const profileBox = document.getElementById('ipad-profile-svg');
+        if (profileBox && profileBox.dataset.renderedSize !== inputs.size) {
+            profileBox.innerHTML = getRoofProfileSVGMarkup(inputs.size);
+            profileBox.dataset.renderedSize = inputs.size;
+        }
+        saveToStorage();
+    }
+
+    function excelMod(number, divisor) {
+        if (divisor === 0) return 0;
+        return number - divisor * Math.floor(number / divisor);
+    }
 
     // ①：全長の切断端から、端の山の内側の肩まで。
     // 1000タイプは山半幅に水平の肩41mmを加える。
-    function roofShoulders(r, type) {
+    function roofShoulders(r, type, roundUp = false) {
         if (r.error) return {left:'-',right:'-'};
         const offsets = {'600':[33.5/2,35/2], '500':[38/2,36/2], '1000':[21/2+41,16/2+41]};
         const [leftOffset,rightOffset] = offsets[type];
         const left = r.peaks[0] + leftOffset;
         const right = r.L - r.peaks[r.peaks.length-1] + rightOffset;
         // 極端に短く、肩の位置が全長外になる納まりは数値表示しない。
-        return {left:left<=r.L?fmt(left):'-', right:right<=r.L?fmt(right):'-'};
+        const display = value => fmt(roundUp ? Math.ceil(value) : value);
+        return {left:left<=r.L?display(left):'-', right:right<=r.L?display(right):'-'};
     }
+
+    function getLayouts() {
+        return {
+            tani: calculateModel(inputs.totalLength, inputs.size, 'tani'),
+            yama: calculateModel(inputs.totalLength, inputs.size, 'yama')
+        };
+    }
+
+    function calculate() {
+        const base = getLayouts();
+        const tani = tableKeraba ? kerabaModel(base.tani, kerabaSide) : base.tani;
+        const yama = tableKeraba ? kerabaModel(base.yama, kerabaSide) : base.yama;
+
+        // iPhone側ケラバ表示更新
+        document.getElementById('key-keraba-state').innerText = tableKeraba ? 'ケラバON' : 'ケラバOFF';
+        document.getElementById('key-keraba').setAttribute('aria-pressed', String(tableKeraba));
+        document.getElementById('key-keraba').style.color = tableKeraba ? '#ff9f0a' : '';
+
+        // iPad側ケラバ表示更新
+        const ipadKerabaBtn = document.getElementById('ipad-keraba-toggle');
+        if (ipadKerabaBtn) {
+            ipadKerabaBtn.innerText = tableKeraba ? 'ケラバON' : 'ケラバOFF';
+            ipadKerabaBtn.setAttribute('aria-pressed', String(tableKeraba));
+        }
+
+        const L = Number(inputs.totalLength);
+        const centerText = Number.isFinite(L) && L > 60 ? fmt(L / 2) : '0';
+        document.getElementById('display-centerL').innerText = centerText;
+
+        const ipadCenterEl = document.getElementById('ipad-centerL');
+        if (ipadCenterEl) {
+            ipadCenterEl.innerText = (inputs.totalLength !== '' && Number.isFinite(L) && L > 60) ? `${fmt(L / 2)} mm` : '-';
+        }
+
+        for (const [r, valueId, countId, roofId] of [[tani,'resTaniZan','countTani','resYaneTani'],[yama,'resYamaZan','countYama','resYaneYama']]) {
+            const valStr = !r.error && r.rows.length ? fmt(r.rows[0].start) : '-';
+            const cntStr = !r.error ? fmt(r.frames) : '-';
+            const roof = roofId === 'resYaneTani' ? base.tani : base.yama;
+            const roofStr = !roof.error && roof.peaks.length ? fmt(roof.peaks[0]) : '-';
+
+            document.getElementById(valueId).innerText = valStr;
+            document.getElementById(countId).innerText = cntStr;
+            document.getElementById(roofId).innerText = roofStr;
+        }
+
+        // iPadサマリーカード更新
+        const ipadTaniZan = document.getElementById('ipad-resTaniZan');
+        if (ipadTaniZan) {
+            ipadTaniZan.innerText = !tani.error && tani.rows.length ? fmt(tani.rows[0].start) : '-';
+            document.getElementById('ipad-countTani').innerText = `${!tani.error ? fmt(tani.frames) : '-'} 本`;
+            document.getElementById('ipad-roofTaniCount').innerText = `${base.tani.error ? '-' : fmt(base.tani.roofCount)} 枚`;
+
+            document.getElementById('ipad-resYamaZan').innerText = !yama.error && yama.rows.length ? fmt(yama.rows[0].start) : '-';
+            document.getElementById('ipad-countYama').innerText = `${!yama.error ? fmt(yama.frames) : '-'} 本`;
+            document.getElementById('ipad-roofYamaCount').innerText = `${base.yama.error ? '-' : fmt(base.yama.roofCount)} 枚`;
+        }
+
+        if (splitViewQuery.matches) {
+            renderIpadRightPane();
+        } else {
+            if (currentActiveTab === 'table') generateTable();
+            if (currentActiveTab === 'edge') generateEdge();
+        }
+    }
+
+    function generateTable() {
+        const base = getLayouts();
+        const tani = tableKeraba ? kerabaModel(base.tani, kerabaSide) : base.tani;
+        const yama = tableKeraba ? kerabaModel(base.yama, kerabaSide) : base.yama;
+        document.getElementById('table-mode').innerText = tableKeraba ? 'ケラバあり' : '割付表';
+        document.getElementById('table-mode').setAttribute('aria-pressed', String(tableKeraba));
+        document.getElementById('table-mode').title = 'タップでケラバタイトあり・なしを切替';
+        document.getElementById('table-side-wrap').classList.toggle('hidden', !tableKeraba);
+        document.getElementById('table-note').classList.toggle('hidden', !tableKeraba);
+        const L = Number(inputs.totalLength);
+        const tbody = document.getElementById('resultTableBody');
+        tbody.replaceChildren();
+        document.getElementById('table-badge-L').innerText = inputs.totalLength !== '' && Number.isFinite(L) ? fmt(L) : '-';
+        document.getElementById('table-badge-size').innerText = inputs.size;
+        const st=roofShoulders(base.tani,inputs.size,true),sy=roofShoulders(base.yama,inputs.size,true);
+        document.getElementById('table-shoulders').innerText = `谷芯 左${st.left}・右${st.right}、山芯 左${sy.left}・右${sy.right}`;
+        const pair = (a, b) => a === b ? String(a) : `${a} / ${b}`;
+        const value = (r, key) => r.error ? '-' : fmt(r[key]);
+        const taniSheets=value(base.tani,'roofCount'),yamaSheets=value(base.yama,'roofCount');
+        const separateSheets=!base.tani.error&&!base.yama.error&&taniSheets!==yamaSheets;
+        const sheets=document.getElementById('table-badge-Sheets');
+        sheets.innerText=pair(taniSheets,yamaSheets);
+        document.getElementById('roof-count-inline').innerText=separateSheets?`谷芯${taniSheets}枚・山芯${yamaSheets}枚`:`屋根材 ${pair(taniSheets,yamaSheets)}枚`;
+        document.getElementById('foot-count-tani').innerText = value(tani,'frames');
+        document.getElementById('foot-count-yama').innerText = value(yama,'frames');
+        const rem = frameRemainder;
+        document.getElementById('foot-rem-tani').innerText = rem(tani);
+        document.getElementById('foot-rem-yama').innerText = rem(yama);
+        document.getElementById('table-badge-Sheets').title = '谷芯割 / 山芯割。同じ値の場合は1つ表示。';
+        for (const id of ['foot-rem-tani','foot-rem-yama']) document.getElementById(id).title = '最後のタイトで使用する山数分の幅。';
+        for (const [name, r] of [['tani', tani], ['yama', yama]]) {
+            const el = document.getElementById('foot-keraba-' + name);
+            el.classList.toggle('hidden', !tableKeraba);
+            el.innerText = r.error ? '-' : `ケラバ ${r.count || 0}本（別）`;
+        }
+        fillLayoutTable('resultTableBody', tani, yama, tableKeraba, tableKeraba);
+    }
+
     function frameRemainder(r) {
         return r.error ? '-' : !r.rows.length ? '0' : fmt(r.rows[r.rows.length - 1].peaks.length * r.c.pitch);
     }
-        const readSaved = (key, fallback) => { try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; } };
-        const saveSaved = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
-        function App() {
-            const [tfSize, setTfSize] = useState(() => ['600','500','1000'].includes(readSaved('ipad_tf_size','600')) ? readSaved('ipad_tf_size','600') : '600');
-            const [tfTotalL, setTfTotalL] = useState(() => /^\d*$/.test(readSaved('ipad_tf_total_l','')) ? readSaved('ipad_tf_total_l','') : '');
-            const [keraba, setKeraba] = useState(() => readSaved('ipad_tf_keraba','false') === 'true');
-            const [side, setSide] = useState(() => readSaved('ipad_tf_side','both') === 'left' ? 'left' : 'both');
-            const [activeTable, setActiveTable] = useState('table');
-            const [toastMsg, setToastMsg] = useState('');
-            const [sharing, setSharing] = useState(false);
-            const shareBusy = useRef(false);
-            const toastTimer = useRef(null);
-            const showToast = useCallback(msg => { clearTimeout(toastTimer.current); setToastMsg(msg); toastTimer.current=setTimeout(()=>setToastMsg(''),2200); }, []);
-            useEffect(()=>()=>clearTimeout(toastTimer.current),[]);
-            useEffect(()=>saveSaved('ipad_tf_size',tfSize),[tfSize]);
-            useEffect(()=>saveSaved('ipad_tf_total_l',tfTotalL),[tfTotalL]);
-            useEffect(()=>saveSaved('ipad_tf_keraba',String(keraba)),[keraba]);
-            useEffect(()=>saveSaved('ipad_tf_side',side),[side]);
-            const handleKeypadPress = val => setTfTotalL(prev => val==='クリア' ? '' : val==='BS' ? prev.slice(0,-1) : (prev==='0' ? val : prev+val).slice(0,8));
-            const handleBackspace = () => handleKeypadPress('BS');
-            const layouts = useMemo(()=>({tani:calculateModel(tfTotalL,tfSize,'tani'),yama:calculateModel(tfTotalL,tfSize,'yama'),edge:calculateModel(tfTotalL,tfSize,'edge')}),[tfTotalL,tfSize]);
-            const visible = useMemo(()=>({tani:keraba?kerabaModel(layouts.tani,side):layouts.tani,yama:keraba?kerabaModel(layouts.yama,side):layouts.yama,edge:kerabaModel(layouts.edge,side)}),[layouts,keraba,side]);
-            const L = Number(tfTotalL);
-            const tfResults = {centerL:tfTotalL!==''&&Number.isFinite(L)&&L>60?L/2:'',taniZan:!visible.tani.error&&visible.tani.rows.length?visible.tani.rows[0].start:'',yamaZan:!visible.yama.error&&visible.yama.rows.length?visible.yama.rows[0].start:'',roofTaniCount:layouts.tani.error?'-':layouts.tani.roofCount,roofYamaCount:layouts.yama.error?'-':layouts.yama.roofCount};
-            const shoulderTani=roofShoulders(layouts.tani,tfSize),shoulderYama=roofShoulders(layouts.yama,tfSize),shoulderEdge=roofShoulders(layouts.edge,tfSize);
-            const isEdge=activeTable==='edge',a=isEdge?layouts.edge:visible.tani,b=isEdge?visible.edge:visible.yama;
-            const ka=!isEdge&&keraba,kb=isEdge||keraba;
-            const val=(r,key)=>r.error?'-':fmt(r[key]);
-            const pair=(x,y)=>x===y?String(x):`${x} / ${y}`;
-            const roofText=isEdge?val(layouts.edge,'roofCount'):pair(val(layouts.tani,'roofCount'),val(layouts.yama,'roofCount'));
-            const textLines=()=>{
-                if(tfTotalL===''||(a.error&&b.error))return '';
-                const headings=isEdge?['ケラバなし','ケラバあり']:['谷芯割','山芯割'];
-                const lines=[`タイトフレーム｜${isEdge?'片張り':'割付表'}`,`全長：${fmt(L)}mm`,`タイプ：${tfSize}`,`屋根材：${roofText}枚`,`ケラバ：${isEdge||keraba?(side==='both'?'左右各1本':'左端1本'):'なし'}`];
-                lines.push(isEdge?`① 左${shoulderEdge.left}・右${shoulderEdge.right}mm`:`① 谷芯 左${shoulderTani.left}・右${shoulderTani.right}mm、山芯 左${shoulderYama.left}・右${shoulderYama.right}mm`);
-                if(!isEdge&&roofText.includes('/'))lines.push('屋根材枚数の順：谷芯割／山芯割');
-                lines.push('単位：mm（左端からの寸法）','',`本｜${headings.join('｜')}`);
-                const kc=(r,key,on)=>on&&!r.error&&r[key]!=null?`ケラバ 山芯 ${fmt(r[key])}`:'-';
-                if(ka||kb)lines.push(`左｜${kc(a,'left',ka)}｜${kc(b,'left',kb)}`);
-                const count=Math.max(a.rows?.length||0,b.rows?.length||0);
-                for(let i=0;i<count;i++)lines.push(`${i+1}｜${a.rows?.[i]?fmt(a.rows[i].start):'-'}｜${b.rows?.[i]?fmt(b.rows[i].start):'-'}`);
-                if((ka||kb)&&side==='both')lines.push(`右｜${kc(a,'right',ka)}｜${kc(b,'right',kb)}`);
-                for(const [r,label,on] of [[a,headings[0],ka],[b,headings[1],kb]]){lines.push(`${label}：通常タイト ${val(r,'frames')}本／端数合計 ${frameRemainder(r)}mm`);if(on)lines.push(`${label}：ケラバ ${r.error?'-':r.count}本（別）`);}
-                lines.push('本数合計・端数合計は通常タイトのみ。ケラバは別。');return lines.join('\n');
-            };
-            const copyText=async text=>{
-                if(navigator.clipboard&&window.isSecureContext){try{await navigator.clipboard.writeText(text);return true;}catch(_){}}
-                const field=document.createElement('textarea');field.value=text;field.readOnly=true;field.style.cssText='position:fixed;left:-9999px;top:0;font-size:16px';document.body.appendChild(field);
-                try{field.select();return document.execCommand('copy');}catch(_){return false;}finally{field.remove();}
-            };
-            const shareCurrent=async()=>{
-                if(shareBusy.current)return;shareBusy.current=true;setSharing(true);
-                try{
-                    const text=textLines();if(!text){showToast('全長を入力してから共有してください');return;}
-                    if(typeof navigator.share==='function'&&window.isSecureContext){try{await navigator.share({title:`タイトフレーム ${isEdge?'片張り':'割付表'}`,text});return;}catch(e){if(e&&e.name==='AbortError')return;}}
-                    showToast(await copyText(text)?'割付をコピーしました':'共有できませんでした。画面の画像を送ってください');
-                }catch(_){showToast('共有できませんでした。画面の画像を送ってください');}
-                finally{shareBusy.current=false;setSharing(false);}
-            };
-            return (
-                <div className="flex flex-col h-full bg-[#111113] text-zinc-100 overflow-hidden">
-                    {/* トースト通知 */}
-                    {toastMsg && (
-                        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] bg-zinc-800/95 text-white px-4 py-2 rounded-full border border-zinc-600 shadow-2xl flex items-center gap-2 backdrop-blur-xl text-sm font-semibold">
-                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            {toastMsg}
-                        </div>
-                    )}
 
-                    {/* コンパクト化したヘッダー（縦幅をスリムにし、左余白をしっかり確保） */}
-                    <header className="h-10 px-5 sm:px-8 border-b border-white/10 bg-[#1c1c1e]/90 backdrop-blur-xl flex items-center justify-between shrink-0 z-40 select-none">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-[#0a84ff] shadow-sm"></div>
-                            <h1 className="text-xs sm:text-sm font-bold tracking-wide text-zinc-200 font-mono flex items-center gap-1.5 sm:gap-2">
-                                <span className="text-orange-400 font-black">KYOWA ROOF</span>
-                                <span className="text-zinc-600">/</span>
-                                <span>屋根タイト割付計算</span>
-                            </h1>
-                        </div>
-                    </header>
+    function fillLayoutTable(id, a, b, kerabaA, kerabaB, isIpad = false) {
+        const body = document.getElementById(id);
+        body.replaceChildren();
+        if (a.error && b.error) {
+            if (isIpad) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="3" class="py-12 px-3 text-zinc-400 text-base">${inputs.totalLength === '' ? '左側のテンキーで全長を入力してください' : a.error}</td>`;
+                body.appendChild(tr);
+            }
+            return;
+        }
+        const cellClass = isIpad ? 'layout-cell' : 'table-cell border-r border-[#333]';
+        const cellRightClass = isIpad ? 'layout-cell' : 'table-cell';
+        const noClass = isIpad ? 'layout-cell text-zinc-400 text-base' : 'table-cell border-r border-[#333] text-zinc-500 font-normal text-[14px] w-12';
+        const labelSpan = isIpad ? '<span class="text-base">ケラバ 山芯</span><br>' : '<span class="text-[12px]">ケラバ 山芯</span><br>';
 
-                    <main className="flex-1 px-4 sm:px-6 py-3 lg:py-4 overflow-hidden">
-                        <div className="h-full w-full max-w-[1400px] mx-auto grid grid-cols-12 gap-3.5 lg:gap-4">
-                            
-                            {/* 左カラム: 入力・テンキー・断面図・サマリーカード (5 / 12) */}
-                            <div className="left-column col-span-12 md:col-span-5 flex flex-col gap-3.5 overflow-y-auto pr-0.5 ipad-scroll">
-                                
-                                {/* 入力 & テンキー カード */}
-                                <div className="input-card ipad-card p-4 space-y-3">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="parameter-box">
-                                            <label htmlFor="ipad-type" className="text-xs text-zinc-400 font-bold">タイプ</label>
-                                            <select id="ipad-type" value={tfSize} onChange={e=>setTfSize(e.target.value)} className="parameter-select text-sm font-semibold outline-none">
-                                                <option value="600">600 (折板)</option><option value="500">500 (H150)</option><option value="1000">1000 (大型)</option>
-                                            </select>
-                                        </div>
-                                        <div className="parameter-box">
-                                            <span className="text-xs text-zinc-400 font-bold">芯寸法</span>
-                                            <span className="parameter-value text-sm font-mono font-bold text-orange-400">{tfResults.centerL!==''?`${format(tfResults.centerL)} mm`:'-'}</span>
-                                        </div>
-                                    </div>
+        const cell = (r, side) => r.error || r[side] == null ? '-' : `${labelSpan}${fmt(side === 'right' ? r.L - r[side] : r[side])}`;
+        const add = (no, left, right) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="${noClass}">${no}</td><td class="${cellClass} text-[#0a84ff]">${left}</td><td class="${cellRightClass} text-[#30d158]">${right}</td>`;
+            body.appendChild(tr);
+        };
+        if (kerabaA || kerabaB) {
+            add('始', kerabaA ? cell(a, 'left') : '-', kerabaB ? cell(b, 'left') : '-');
+            body.lastElementChild.classList.add('keraba-divider-bottom');
+        }
+        const count = Math.max(a.rows?.length || 0, b.rows?.length || 0);
+        for (let i = 0; i < count; i++) add(i + 1, a.rows?.[i] ? fmt(a.rows[i].start) : '-', b.rows?.[i] ? fmt(b.rows[i].start) : '-');
+        if ((kerabaA || kerabaB) && kerabaSide === 'both') {
+            add('終', kerabaA ? cell(a, 'right') : '-', kerabaB ? cell(b, 'right') : '-');
+            body.lastElementChild.classList.add('keraba-divider-top');
+        }
+    }
 
-                                    {/* 全長表示ディスプレイ（iPadのソフトキーボードを出さずテンキーで直感入力） */}
-                                    <div className="pt-1">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <label className="text-xs text-zinc-400 font-bold">全長 (mm)</label>
-                                            <button type="button" onClick={()=>setKeraba(v=>!v)} aria-pressed={keraba} className="keraba-inline text-xs font-mono font-semibold">{keraba?'ケラバON':'ケラバOFF'}</button>
-                                        </div>
-                                        <div className="w-full bg-[#111113] border-2 border-[#38383a] focus-within:border-orange-500 rounded-xl px-4 py-2.5 flex items-center justify-between">
-                                            <span className="text-xs text-zinc-500 font-mono font-bold">LENGTH</span>
-                                            <div className="font-mono text-2xl font-black text-orange-400 tracking-tight">
-                                                {format(tfTotalL) || <span className="text-zinc-600 text-lg font-normal">全長を入力</span>}
-                                                <span className="text-xs text-zinc-500 font-bold ml-1.5">mm</span>
-                                            </div>
-                                        </div>
-                                    </div>
+    function toggleTableKeraba() {
+        tableKeraba = !tableKeraba;
+        try { localStorage.setItem('tight_frame_table_keraba_v1', String(tableKeraba)); } catch (_) {}
+        calculate();
+    }
 
-                                    {/* iPad最適化 2行テンキー（1行目: 00/0/クリア、2行目: 1〜9） */}
-                                    <div className="pt-1">
-                                        <div className="grid grid-cols-9 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-[#252528]">
-                                            {/* 1行目: 00 / 0 / クリア (各3列分) */}
-                                            <button type="button" onClick={() => handleKeypadPress('00')} className="ipad-key col-span-3 text-xl">00</button>
-                                            <button type="button" onClick={() => handleKeypadPress('0')} className="ipad-key col-span-3 text-xl">0</button>
-                                            <button type="button" onClick={() => handleKeypadPress('クリア')} className="ipad-key ipad-key-fn col-span-3" title="全長をクリア">C</button>
+    function setKerabaSide(value) {
+        kerabaSide = value === 'both' ? 'both' : 'left';
+        try { localStorage.setItem('tight_frame_keraba_side_v2', kerabaSide); } catch (_) {}
+        for (const id of ['table-side', 'edge-side', 'ipad-side-select']) {
+            const el = document.getElementById(id);
+            if (el) el.value = kerabaSide;
+        }
+        calculate();
+    }
 
-                                            {/* 2行目: 1 〜 9 (各1列分) */}
-                                            <button type="button" onClick={() => handleKeypadPress('1')} className="ipad-key col-span-1">1</button>
-                                            <button type="button" onClick={() => handleKeypadPress('2')} className="ipad-key col-span-1">2</button>
-                                            <button type="button" onClick={() => handleKeypadPress('3')} className="ipad-key col-span-1">3</button>
-                                            <button type="button" onClick={() => handleKeypadPress('4')} className="ipad-key col-span-1">4</button>
-                                            <button type="button" onClick={() => handleKeypadPress('5')} className="ipad-key col-span-1">5</button>
-                                            <button type="button" onClick={() => handleKeypadPress('6')} className="ipad-key col-span-1">6</button>
-                                            <button type="button" onClick={() => handleKeypadPress('7')} className="ipad-key col-span-1">7</button>
-                                            <button type="button" onClick={() => handleKeypadPress('8')} className="ipad-key col-span-1">8</button>
-                                            <button type="button" onClick={() => handleKeypadPress('9')} className="ipad-key col-span-1 border-r-0">9</button>
-                                        </div>
-                                    </div>
-                                </div>
+    function generateEdge() {
+        const r = calculateModel(inputs.totalLength, inputs.size, 'edge');
+        const k = kerabaModel(r, kerabaSide);
+        document.getElementById('edge-L').innerText = r.error ? '-' : fmt(r.L);
+        document.getElementById('edge-size').innerText = inputs.size;
+        const shoulder=roofShoulders(r,inputs.size,true);
+        document.getElementById('edge-shoulders').innerText = `左${shoulder.left}・右${shoulder.right}`;
+        document.getElementById('edge-sheets').innerText = r.error ? '-' : fmt(r.roofCount);
+        const summary = (v, withKeraba) => {
+            const n = v.error ? '-' : fmt(v.frames);
+            const extra = withKeraba ? `<div class="text-[12px] text-zinc-400">ケラバ ${v.error ? '-' : v.count}本（別）</div>` : '';
+            return `<div><span class="text-[11px] text-zinc-400">本数合計</span> <span class="text-[18px]">${n}</span><span class="text-[12px]">本</span></div>${extra}<div class="mt-1"><span class="text-[11px] text-zinc-400">端数合計</span> <span class="text-[18px] text-orange-400">${frameRemainder(v)}</span><span class="text-[12px]">㎜</span></div>`;
+        };
+        document.getElementById('edge-total-none').innerHTML = summary(r, false);
+        document.getElementById('edge-total-with').innerHTML = summary(k, true);
+        document.getElementById('edge-note').innerText = (r.error || k.error) || '左外端からの寸法(mm)。通常タイトは谷芯、ケラバは山芯。終のケラバは右外端からの寸法。屋根材の最初の山芯は30mm。本数・端数合計は通常タイトのみ。';
+        fillLayoutTable('edge-table', r, k, false, true);
+    }
 
-                                {/* 折板屋根 断面プロファイル表示 */}
-                                <div className="profile-card ipad-card p-3.5 flex flex-col items-center justify-center bg-[#111113] border border-white/10 select-none">
-                                    <RoofProfileSVG size={tfSize} />
-                                </div>
+    function renderIpadRightPane() {
+        const isEdge = (ipadRightTab === 'edge');
+        const L = Number(inputs.totalLength);
+        document.getElementById('ipad-right-L').innerText = (inputs.totalLength !== '' && Number.isFinite(L)) ? fmt(L) : '-';
 
-                                {/* 端部基準 & 屋根材枚数カード */}
-                                <div className="summary-cards grid grid-cols-2 gap-3 select-none">
-                                    <div className="ipad-card p-3.5 border-l-4 border-l-[#0a84ff] bg-[#1c1c1e]">
-                                        <span className="text-xs text-blue-400 font-bold block mb-1">谷芯 端部基準 (タイト)</span>
-                                        <div className="text-[22px] font-mono font-bold text-white mb-1">
-                                            {tfResults.taniZan !== '' ? format(tfResults.taniZan) : '-'}
-                                        </div>
-                                        <div className="text-xs text-zinc-400 font-mono mb-1">通常タイト: <span className="text-blue-400 font-bold">{val(visible.tani,'frames')} 本</span></div>
-                                        <div className="text-xs text-zinc-400 font-mono">屋根材谷芯: <span className="text-blue-400 font-bold">{tfResults.roofTaniCount} 枚</span></div>
-                                    </div>
-                                    <div className="ipad-card p-3.5 border-l-4 border-l-[#30d158] bg-[#1c1c1e]">
-                                        <span className="text-xs text-emerald-400 font-bold block mb-1">山芯 端部基準 (タイト)</span>
-                                        <div className="text-[22px] font-mono font-bold text-white mb-1">
-                                            {tfResults.yamaZan !== '' ? format(tfResults.yamaZan) : '-'}
-                                        </div>
-                                        <div className="text-xs text-zinc-400 font-mono mb-1">通常タイト: <span className="text-emerald-400 font-bold">{val(visible.yama,'frames')} 本</span></div>
-                                        <div className="text-xs text-zinc-400 font-mono">屋根材山芯: <span className="text-emerald-400 font-bold">{tfResults.roofYamaCount} 枚</span></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="col-span-12 md:col-span-7 ipad-card flex flex-col overflow-hidden h-full select-none">
-                                <div className="right-header shrink-0">
-                                    <div className="right-tabs" role="tablist" aria-label="割付表示">
-                                        <button type="button" role="tab" aria-selected={!isEdge} aria-controls="ipad-layout-panel" onClick={()=>setActiveTable('table')} className={!isEdge?'selected':''}>割付表</button>
-                                        <button type="button" role="tab" aria-selected={isEdge} aria-controls="ipad-layout-panel" onClick={()=>setActiveTable('edge')} className={isEdge?'selected':''}>片張り</button>
-                                    </div>
-                                    <div className="length-share-row">
-                                        <span className="font-bold">全長: <span className="text-orange-400">{tfTotalL!==''?fmt(L):'-'}</span> mm</span>
-                                        <div className="header-actions">
-                                            {!isEdge&&<button type="button" onClick={()=>setKeraba(v=>!v)} aria-pressed={keraba} className="mode-button">{keraba?'ケラバあり':'割付表'}</button>}
-                                            <button type="button" onClick={shareCurrent} disabled={sharing} className="share-icon" aria-label="共有" title="共有"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M7 10H5v11h14V10h-2"/></svg></button>
-                                        </div>
-                                    </div>
-                                    <div className="font-bold mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                                        <div className="flex flex-wrap gap-x-3 gap-y-1">{isEdge?<span>屋根材 <span className="text-orange-400">{roofText}</span>枚</span>:<><span>屋根材 谷芯 <span className="text-blue-400">{tfResults.roofTaniCount}</span>枚</span><span>山芯 <span className="text-emerald-400">{tfResults.roofYamaCount}</span>枚</span></>}</div>
-                                        <div className="flex flex-wrap gap-x-3 gap-y-1" title="① 全長の端から山の内側の肩まで（mm）">{isEdge?<span>① 左{shoulderEdge.left}・右{shoulderEdge.right}</span>:<><span className="whitespace-nowrap">① 谷芯 左{shoulderTani.left}・右{shoulderTani.right}</span><span className="whitespace-nowrap">山芯 左{shoulderYama.left}・右{shoulderYama.right}</span></>}</div>
-                                    </div>
-                                    {(isEdge||keraba)&&<select aria-label="ケラバの取り付け側" value={side} onChange={e=>setSide(e.target.value)} className="side-select mt-2"><option value="left">ケラバ：左端1本</option><option value="both">ケラバ：左右各1本</option></select>}
-                                </div>
-                                <div id="ipad-layout-panel" role="tabpanel" className="flex-1 ipad-scroll bg-[#171719]" key={activeTable}>
-                                    <table className="w-full text-center border-collapse">
-                                        <thead className="sticky top-0 bg-[#252528] border-b border-white/10 text-xs font-mono z-10 shadow-sm"><tr><th className="py-3 px-2 text-zinc-400 font-bold w-12 border-r border-white/10">本</th><th className="py-3 px-2 text-[#0a84ff] font-bold border-r border-white/10 text-base">{isEdge?'ケラバなし':'谷芯 (mm)'}</th><th className="py-3 px-2 text-[#30d158] font-bold text-base">{isEdge?'ケラバあり':'山芯 (mm)'}</th></tr></thead>
-                                        <tbody className="font-mono text-base">
-                                            {a.error&&b.error?<tr><td colSpan="3" className="py-12 px-3 text-zinc-400">{tfTotalL===''?'左側のテンキーで全長を入力してください':a.error}</td></tr>:<>
-                                                {(ka||kb)&&<tr className="keraba-divider-bottom"><td className="layout-cell text-zinc-400">左</td>{[[a,ka],[b,kb]].map(([r,on],i)=><td key={i} className={`layout-cell ${i===0?'text-blue-400':'text-emerald-400'}`}>{on&&!r.error&&r.left!=null?<><span className="text-sm">ケラバ 山芯</span><br/>{fmt(r.left)}</>:'-'}</td>)}</tr>}
-                                                {Array.from({length:Math.max(a.rows?.length||0,b.rows?.length||0)},(_,i)=><tr key={i}><td className="layout-cell text-zinc-400 text-sm">{i+1}</td><td className="layout-cell text-blue-400">{a.rows?.[i]?fmt(a.rows[i].start):'-'}</td><td className="layout-cell text-emerald-400">{b.rows?.[i]?fmt(b.rows[i].start):'-'}</td></tr>)}
-                                                {(ka||kb)&&side==='both'&&<tr className="keraba-divider-top"><td className="layout-cell text-zinc-400">右</td>{[[a,ka],[b,kb]].map(([r,on],i)=><td key={i} className={`layout-cell ${i===0?'text-blue-400':'text-emerald-400'}`}>{on&&!r.error&&r.right!=null?<><span className="text-sm">ケラバ 山芯</span><br/>{fmt(r.right)}</>:'-'}</td>)}</tr>}
-                                            </>}
-                                        </tbody>
-                                        <tfoot className="bg-[#2c2c2e] border-t-2 border-[#48484a]"><tr><td className="border-r border-white/10"></td>{[[a,ka],[b,kb]].map(([r,on],i)=><td key={i} className="py-4 px-1 border-r border-white/10"><div className="text-sm text-zinc-400">本数合計 <span className="text-xl text-white font-bold">{val(r,'frames')}</span>本</div>{on&&<div className="text-sm text-zinc-400">ケラバ {r.error?'-':r.count}本（別）</div>}<div className="text-sm text-zinc-400 mt-1">端数合計 <span className="text-xl text-orange-400 font-bold">{frameRemainder(r)}</span>mm</div></td>)}</tr></tfoot>
-                                    </table>
-                                </div>
-                                <p className="px-3 py-2 text-sm text-zinc-400 border-t border-white/10 shrink-0">{a.error||b.error||(isEdge?'左外端からの寸法。最初の屋根山芯は30mm。':'左切断端からの寸法。')}{!a.error&&!b.error&&' 通常タイトは谷芯、ケラバは山芯。本数は通常タイトのみ。'}</p>
-                            </div>
-
-                        </div>
-                    </main>
-                </div>
-            );
+        const modeBtn = document.getElementById('ipad-mode-btn');
+        modeBtn.classList.toggle('hidden', isEdge);
+        if (!isEdge) {
+            modeBtn.innerText = tableKeraba ? 'ケラバあり' : '割付表';
+            modeBtn.setAttribute('aria-pressed', String(tableKeraba));
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+        document.getElementById('ipad-side-wrap').classList.toggle('hidden', !(isEdge || tableKeraba));
+        document.getElementById('ipad-th-left').innerText = isEdge ? 'ケラバなし' : '谷芯 (mm)';
+        document.getElementById('ipad-th-right').innerText = isEdge ? 'ケラバあり' : '山芯 (mm)';
 
-    <script>
-        if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js', { updateViaCache:'none' }).then(registration => registration.update()).catch(() => {});
-            });
+        const base = getLayouts();
+        const edgeBase = calculateModel(inputs.totalLength, inputs.size, 'edge');
+        const edgeKeraba = kerabaModel(edgeBase, kerabaSide);
+
+        const a = isEdge ? edgeBase : (tableKeraba ? kerabaModel(base.tani, kerabaSide) : base.tani);
+        const b = isEdge ? edgeKeraba : (tableKeraba ? kerabaModel(base.yama, kerabaSide) : base.yama);
+        const ka = !isEdge && tableKeraba;
+        const kb = isEdge || tableKeraba;
+
+        const roofInfoEl = document.getElementById('ipad-right-roof-info');
+        const shouldersEl = document.getElementById('ipad-right-shoulders');
+        if (isEdge) {
+            const sEdge = roofShoulders(edgeBase, inputs.size, true);
+            roofInfoEl.innerHTML = `<span>屋根材 <span class="text-orange-400">${edgeBase.error ? '-' : fmt(edgeBase.roofCount)}</span>枚</span>`;
+            shouldersEl.innerHTML = `<span>① 左${sEdge.left}・右${sEdge.right}</span>`;
+        } else {
+            const sTani = roofShoulders(base.tani, inputs.size, true);
+            const sYama = roofShoulders(base.yama, inputs.size, true);
+            roofInfoEl.innerHTML = `<span>屋根材 谷芯 <span class="text-blue-400">${base.tani.error ? '-' : fmt(base.tani.roofCount)}</span>枚</span><span>山芯 <span class="text-emerald-400">${base.yama.error ? '-' : fmt(base.yama.roofCount)}</span>枚</span>`;
+            shouldersEl.innerHTML = `<span class="whitespace-nowrap">① 谷芯 左${sTani.left}・右${sTani.right}</span><span class="whitespace-nowrap">山芯 左${sYama.left}・右${sYama.right}</span>`;
         }
-    </script>
+
+        fillLayoutTable('ipad-table-body', a, b, ka, kb, true);
+
+        const foot = document.getElementById('ipad-table-foot');
+        const renderFootCell = (r, on) => {
+            const n = r.error ? '-' : fmt(r.frames);
+            const extra = on ? `<div class="text-base text-zinc-400">ケラバ ${r.error ? '-' : r.count}本（別）</div>` : '';
+            return `<td class="py-4 px-1 border-r border-white/10"><div class="text-base text-zinc-400">本数合計 <span class="text-xl text-white font-bold">${n}</span>本</div>${extra}<div class="text-base text-zinc-400 mt-1">端数合計 <span class="text-xl text-orange-400 font-bold">${frameRemainder(r)}</span>mm</div></td>`;
+        };
+        foot.innerHTML = `<tr><td class="border-r border-white/10"></td>${renderFootCell(a, ka)}${renderFootCell(b, kb)}</tr>`;
+
+        const noteEl = document.getElementById('ipad-right-note');
+        noteEl.innerText = (a.error || b.error || (isEdge ? '左外端からの寸法(mm)。終のケラバは右外端からの寸法。最初の屋根山芯は30mm。' : '左切断端からの寸法(mm)。終のケラバ山芯は右切断端からの寸法。'))
+            + (!a.error && !b.error ? ' 通常タイトは谷芯、ケラバは山芯。本数・端数合計は通常タイトのみ。' : '');
+    }
+
+    function layoutShareText(kind) {
+        if (kind !== 'table' && kind !== 'edge') throw new Error('共有対象を確認してください。');
+        const edge = kind === 'edge';
+        const read = id => document.getElementById(id).innerText.trim();
+        const length = read(edge ? 'edge-L' : 'table-badge-L');
+        if (!length || length === '-') return '';
+        const lines = [edge ? 'タイトフレーム｜片張り' : 'タイトフレーム｜割付表',
+            `全長：${length}mm`,
+            `タイプ：${read(edge ? 'edge-size' : 'table-badge-size')}`,
+            `屋根材：${read(edge ? 'edge-sheets' : 'table-badge-Sheets')}枚`];
+        lines.push((edge ? '' : '① ') + read(edge ? 'edge-shoulders' : 'table-shoulders').replace(/^①\s*/, '') + '（mm）');
+        if (edge || tableKeraba) lines.push(`ケラバ：${kerabaSide === 'both' ? '終始2本' : '片端1本'}`);
+        else lines.push('ケラバ：なし');
+        if (!edge && read('table-badge-Sheets').includes('/')) lines.push('屋根材枚数の順：谷芯割／山芯割');
+        lines.push('単位：mm（左端からの寸法。終のケラバは右端から）', '', edge ? '本｜ケラバなし｜ケラバあり' : '本｜谷芯割｜山芯割');
+        const body = document.getElementById(edge ? 'edge-table' : 'resultTableBody');
+        const clean = el => el.innerText.trim().replace(/\s+/g, ' ');
+        for (const row of body.children) lines.push(Array.from(row.children, clean).join('｜'));
+        lines.push('');
+        if (edge) {
+            lines.push('ケラバなし：' + clean(document.getElementById('edge-total-none')));
+            lines.push('ケラバあり：' + clean(document.getElementById('edge-total-with')));
+        } else {
+            for (const [key, label] of [['tani', '谷芯割'], ['yama', '山芯割']]) {
+                lines.push(`${label}：通常タイト ${read('foot-count-' + key)}本／端数合計 ${read('foot-rem-' + key)}mm`);
+                if (tableKeraba) lines.push(label + '：' + read('foot-keraba-' + key));
+            }
+        }
+        lines.push('本数合計・端数合計は通常タイトのみ。ケラバは別。');
+        return lines.join('\n');
+    }
+
+    async function copyLayoutShareText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            try { await navigator.clipboard.writeText(text); return true; } catch (_) {}
+        }
+        const field = document.createElement('textarea');
+        field.value = text;
+        field.readOnly = true;
+        field.style.cssText = 'position:fixed;left:-9999px;top:0;font-size:16px';
+        document.body.appendChild(field);
+        try { field.select(); return document.execCommand('copy'); }
+        catch (_) { return false; }
+        finally { field.remove(); }
+    }
+
+    let layoutShareBusy = false;
+    async function shareLayout(kind) {
+        if (layoutShareBusy) return;
+        layoutShareBusy = true;
+        const buttons = ['share-table', 'share-edge', 'ipad-share-btn'].map(id => document.getElementById(id));
+        buttons.forEach(button => { if (button) button.disabled = true; });
+        try {
+            if (kind === 'edge') generateEdge();
+            else if (kind === 'table') generateTable();
+            const text = layoutShareText(kind);
+            if (!text) { showToast('全長を入力してから共有してください'); return; }
+            if (typeof navigator.share === 'function' && window.isSecureContext) {
+                try {
+                    await navigator.share({ title: kind === 'edge' ? 'タイトフレーム 片張り' : 'タイトフレーム 割付表', text });
+                    return;
+                } catch (error) {
+                    if (error && error.name === 'AbortError') return;
+                }
+            }
+            const copied = await copyLayoutShareText(text);
+            showToast(copied ? '割付をコピーしました' : '共有できませんでした。画面の画像を送ってください');
+        } catch (_) {
+            showToast('共有できませんでした。画面の画像を送ってください');
+        } finally {
+            layoutShareBusy = false;
+            buttons.forEach(button => { if (button) button.disabled = false; });
+        }
+    }
+
+    function shareIpadCurrent() {
+        return shareLayout(ipadRightTab);
+    }
+
+    function saveToStorage() {
+        try { localStorage.setItem(storageKey, JSON.stringify(inputs)); } catch (_) {}
+    }
+
+    function loadFromStorage() {
+        try {
+            const data = JSON.parse(localStorage.getItem(storageKey));
+            if (data && typeof data === 'object') {
+                if (typeof data.totalLength === 'string' && /^\d*$/.test(data.totalLength)) inputs.totalLength = data.totalLength;
+                if (Object.prototype.hasOwnProperty.call(CONFIG, data.size)) inputs.size = String(data.size);
+            } else {
+                // 旧iPad版キーからの引き継ぎ
+                const oldL = localStorage.getItem('ipad_tf_total_l');
+                const oldSize = localStorage.getItem('ipad_tf_size');
+                if (oldL && /^\d*$/.test(oldL)) inputs.totalLength = oldL;
+                if (oldSize && Object.prototype.hasOwnProperty.call(CONFIG, oldSize)) inputs.size = oldSize;
+            }
+        } catch (_) {}
+        try {
+            const savedSide = localStorage.getItem('tight_frame_keraba_side_v2') ?? localStorage.getItem('ipad_tf_side');
+            const savedKeraba = localStorage.getItem('tight_frame_table_keraba_v1') ?? localStorage.getItem('ipad_tf_keraba');
+            kerabaSide = savedSide === 'left' ? 'left' : 'both';
+            tableKeraba = savedKeraba === 'true';
+        } catch (_) {}
+        for (const id of ['sizeSelect', 'ipad-type']) {
+            const sel = document.getElementById(id);
+            if (sel) sel.value = inputs.size;
+        }
+        for (const id of ['table-side', 'edge-side', 'ipad-side-select']) {
+            const sel = document.getElementById(id);
+            if (sel) sel.value = kerabaSide;
+        }
+        updateDisplay();
+        calculate();
+    }
+
+    async function copyValue(id) {
+        const val = document.getElementById(id).innerText;
+        if (val === "-") return;
+        const text = val.replace(/,/g, '');
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast("コピーしました");
+                return;
+            } catch (_) {}
+        }
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.readOnly = true;
+        temp.style.cssText = 'position:fixed;left:-9999px;top:0;font-size:16px';
+        document.body.appendChild(temp);
+        let copied = false;
+        try {
+            temp.select();
+            copied = document.execCommand('copy');
+        } catch (_) {
+            copied = false;
+        } finally {
+            document.body.removeChild(temp);
+        }
+        showToast(copied ? "コピーしました" : "コピーできませんでした");
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 1000);
+    }
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let swipeReady = false;
+    document.addEventListener('touchstart', e => {
+        if (splitViewQuery.matches) return;
+        swipeReady = e.touches.length === 1 && !e.target.closest('button, select, input, textarea, .result-box, .calc-cell');
+        if (!swipeReady) return;
+        touchStartX = e.changedTouches[0].clientX;
+        touchStartY = e.changedTouches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchcancel', () => { swipeReady = false; }, { passive: true });
+    document.addEventListener('touchend', e => {
+        if (splitViewQuery.matches || !swipeReady || e.touches.length || !e.changedTouches.length) return;
+        swipeReady = false;
+        if (['INPUT', 'SELECT'].includes(document.activeElement?.tagName)) return;
+        const deltaX = touchStartX - e.changedTouches[0].clientX;
+        const deltaY = touchStartY - e.changedTouches[0].clientY;
+        if (Math.abs(deltaX) > 80 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (deltaX > 0 && currentActiveTab === 'calc') switchTab('table');
+            else if (deltaX < 0 && currentActiveTab === 'table') switchTab('calc');
+        }
+    }, { passive: true });
+
+    function syncResponsiveView() {
+        if (splitViewQuery.matches) {
+            renderIpadRightPane();
+        } else {
+            switchTab(currentActiveTab);
+        }
+    }
+    if (splitViewQuery.addEventListener) splitViewQuery.addEventListener('change', syncResponsiveView);
+    else splitViewQuery.addListener(syncResponsiveView);
+
+    window.onload = () => {
+        loadFromStorage();
+        focusInput('totalLength');
+        syncResponsiveView();
+    };
+</script>
+
+<button id="installBtn" aria-label="このアプリをインストール">アプリをインストール</button>
+<div id="iosInstallTip" style="position:fixed;left:16px;right:16px;bottom:20px;z-index:9999;background:rgba(28,28,30,.96);color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;display:none;line-height:1.45;">
+  <div>iPhone / iPad は Safari の共有から「ホーム画面に追加」を使ってください。</div>
+  <button type="button" id="closeIosTip" style="margin-top:10px;background:#2c2c2e;color:#fff;border:none;padding:8px 12px;border-radius:10px;">閉じる</button>
+</div>
+<script>
+(() => {
+  const installBtn = document.getElementById('installBtn');
+  const iosTip = document.getElementById('iosInstallTip');
+  const closeIosTip = document.getElementById('closeIosTip');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = /iPhone|iPad|iPod/i.test(window.navigator.userAgent || '');
+  let deferredPrompt = null;
+
+  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+        .then(registration => registration.update())
+        .catch(() => {});
+    }, { once: true });
+  }
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+    if (!isStandalone && installBtn) installBtn.style.display = 'block';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    if (installBtn) installBtn.style.display = 'none';
+    if (iosTip) iosTip.style.display = 'none';
+  });
+
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        try {
+          await deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+        } catch (error) {
+          showToast("インストール画面を開けませんでした");
+        } finally {
+          deferredPrompt = null;
+          installBtn.style.display = 'none';
+        }
+        return;
+      }
+
+      if (isIOS && !isStandalone && iosTip) {
+        iosTip.style.display = 'block';
+      }
+    });
+  }
+
+  if (closeIosTip) {
+    closeIosTip.addEventListener('click', () => {
+      iosTip.style.display = 'none';
+    });
+  }
+
+  if (isIOS && !isStandalone && installBtn) {
+    installBtn.style.display = 'block';
+  }
+})();
+</script>
+
 </body>
-
 </html>
